@@ -29,12 +29,12 @@ const NEWS_SOURCES = {
   ],
   science: [
     { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml' },
-    { name: 'Nature News', url: 'https://www.nature.com/nature/current_issue/rss/index.html' },
+    { name: 'Nature News', url: 'https://www.nature.com/nature/current_issue/rss/' },
     { name: 'Phys.org', url: 'https://phys.org/rss-feed/' }
   ],
   economy: [
     { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
-    { name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
+    { name: 'Financial Times', url: 'https://feeds.ft.com/home/rss' },
     { name: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/' }
   ]
 };
@@ -44,9 +44,9 @@ const ARTICLES_PER_SOURCE = 5;
 /**
  * RSS 피드에서 기사 수집
  */
-async function fetchArticlesFromRSS(feedUrl) {
+async function fetchArticlesFromRSS(source) {
   try {
-    const feed = await parser.parseURL(feedUrl);
+    const feed = await parser.parseURL(source.url);
     const articles = feed.items.slice(0, ARTICLES_PER_SOURCE).map((item, idx) => ({
       id: `${Date.now()}-${idx}`,
       title: item.title || 'No title',
@@ -55,9 +55,11 @@ async function fetchArticlesFromRSS(feedUrl) {
       content: item.content || '',
       pubDate: item.pubDate || new Date().toISOString()
     }));
+    
+    console.log(`    ✅ ${source.name}: ${articles.length}개 수집`);
     return articles;
   } catch (err) {
-    console.warn(`⚠️  RSS fetch failed for ${feedUrl}:`, err.message);
+    console.error(`    ❌ ${source.name}: RSS 파싱 실패 - ${err.message}`);
     return [];
   }
 }
@@ -148,12 +150,16 @@ async function fetchAllNews() {
     economy: []
   };
 
+  // 통계용 객체
+  const stats = {};
+
   for (const [category, sources] of Object.entries(NEWS_SOURCES)) {
     console.log(`\n📰 ${category.toUpperCase()} 뉴스 수집 중...`);
+    stats[category] = {};
 
     for (const source of sources) {
-      console.log(`  → ${source.name}...`);
-      const articles = await fetchArticlesFromRSS(source.url);
+      const articles = await fetchArticlesFromRSS(source);
+      stats[category][source.name] = articles.length;
 
       for (const article of articles) {
         const { titleKo, summary } = await translateAndSummarize(article);
@@ -172,7 +178,7 @@ async function fetchAllNews() {
     }
   }
 
-  return result;
+  return { data: result, stats };
 }
 
 /**
@@ -182,12 +188,33 @@ async function main() {
   try {
     console.log('🌍 Daily News 수집 시작...\n');
 
-    const newsData = await fetchAllNews();
+    const { data: newsData, stats } = await fetchAllNews();
 
     // 파일 저장 (덮어쓰기)
     fs.writeFileSync(dataPath, JSON.stringify(newsData, null, 2), 'utf-8');
-    console.log(`\n✅ 뉴스 데이터 저장 완료: ${dataPath}`);
-    console.log(`   세계: ${newsData.world.length}개, 과학: ${newsData.science.length}개, 경제: ${newsData.economy.length}개`);
+    
+    // 상세한 통계 출력
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 NEWS COLLECTION SUMMARY');
+    console.log('='.repeat(60));
+
+    let totalArticles = 0;
+    for (const [category, sources] of Object.entries(stats)) {
+      const categoryTotal = Object.values(sources).reduce((a, b) => a + b, 0);
+      totalArticles += categoryTotal;
+      
+      console.log(`\n[${category.toUpperCase()}] 총 ${categoryTotal}개 수집`);
+      for (const [sourceName, count] of Object.entries(sources)) {
+        const status = count > 0 ? '✅' : '⚠️ ';
+        console.log(`  ${status} ${sourceName}: ${count}개`);
+      }
+    }
+
+    console.log('\n' + '-'.repeat(60));
+    console.log(`✅ 전체 수집 완료: ${totalArticles}개`);
+    console.log(`   저장 위치: ${dataPath}`);
+    console.log(`   업데이트 시간: ${newsData.updatedAt}`);
+    console.log('='.repeat(60));
   } catch (error) {
     console.error('❌ 뉴스 수집 중 오류:', error.message);
     process.exit(1);
