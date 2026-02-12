@@ -1,0 +1,306 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+
+const posts = (await getCollection('posts'))
+	.filter(post => !post.data.draft)
+	.sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+---
+
+<Layout>
+	<div id="archive-container">
+		<header id="archive-header">
+			<h1>기록 보관함</h1>
+			<p>차분히 담아둔 일상의 생각과 경험들</p>
+			<div class="search-row">
+				<input id="search-input" type="search" placeholder="검색 (제목/설명)" />
+			</div>
+		</header>
+
+		<!-- Market Cap Link -->
+		<div class="featured-link">
+			<a href="/archive/marketcap" class="market-cap-card">
+				<span class="card-emoji">📈</span>
+				<div class="card-content">
+					<h3>Daily Market Cap Top 10</h3>
+					<p>US & Korea Market</p>
+				</div>
+				<span class="card-arrow">→</span>
+			</a>
+		</div>
+
+		<div id="posts-grid">
+			{posts.length === 0 ? (
+				<p class="empty-state">아직 작성된 글이 없습니다.</p>
+			) : (
+				posts.map(post => (
+						<article class="post-card" data-title={post.data.title.toLowerCase()} data-description={post.data.description.toLowerCase()}>
+						<a href={`/posts/${post.slug}`} class="post-link">
+							<h2 class="post-title">{post.data.title}</h2>
+						</a>
+						<p class="post-description">{post.data.description}</p>
+						<div class="post-meta">
+							<time class="post-date" datetime={post.data.pubDate.toISOString()}>
+								{post.data.pubDate.toLocaleDateString('ko-KR', {
+									year: 'numeric',
+									month: 'long',
+									day: 'numeric'
+								})}
+							</time>
+							{post.data.tags.length > 0 && (
+								<div class="post-tags">
+									{post.data.tags.map(tag => (
+										<span class="tag">{tag}</span>
+									))}
+								</div>
+							)}
+						</div>
+					</article>
+				))
+			)}
+		</div>
+		<script>
+			const input = document.getElementById('search-input');
+			if (input) {
+				input.addEventListener('input', (e) => {
+					const q = e.target.value.trim().toLowerCase();
+					const cards = document.querySelectorAll('.post-card');
+					cards.forEach(card => {
+						if (!q) { card.style.display = ''; return; }
+						const t = card.dataset.title || '';
+						const d = card.dataset.description || '';
+						if (t.includes(q) || d.includes(q)) card.style.display = '';
+						else card.style.display = 'none';
+					});
+				});
+			}
+		</script>
+	</div>
+</Layout>
+
+<style>
+	#archive-container {
+		font-family: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 60px 16px 80px;
+	}
+
+	#archive-header {
+		margin-bottom: 48px;
+		text-align: center;
+	}
+
+	#archive-header h1 {
+		font-size: 36px;
+		margin: 0 0 12px;
+		color: #111827;
+		font-weight: 700;
+	}
+
+	#archive-header p {
+		font-size: 16px;
+		color: #6b7280;
+		margin: 0 0 24px;
+		line-height: 1.6;
+	}
+
+	.search-row {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 24px;
+	}
+
+	#search-input {
+		width: 100%;
+		max-width: 500px;
+		padding: 12px 16px;
+		font-size: 14px;
+		font-family: inherit;
+		color: #111827;
+		background: rgba(255, 255, 255, 0.95);
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		transition: border-color 0.2s, box-shadow 0.2s, background 0.12s;
+		outline: none;
+	}
+
+	#search-input::placeholder {
+		color: #9ca3af;
+		font-weight: 400;
+	}
+
+	#search-input:hover {
+		border-color: #cad5e1;
+		background: rgba(255, 255, 255, 0.98);
+	}
+
+	#search-input:focus {
+		border-color: #6db3e8;
+		box-shadow: 0 0 0 3px rgba(109, 179, 232, 0.08);
+		background: rgba(255, 255, 255, 1);
+	}
+
+	#posts-grid {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+	}
+
+	.post-card {
+		padding: 20px;
+		background: rgba(255, 255, 255, 0.95);
+		border-radius: 8px;
+		border: 1px solid #e5e7eb;
+		transition: border-color 0.2s, box-shadow 0.2s;
+	}
+
+	.post-card:hover {
+		border-color: #6db3e8;
+		box-shadow: 0 1px 3px rgba(109, 179, 232, 0.1);
+	}
+
+	.post-link {
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.post-title {
+		font-size: 20px;
+		margin: 0 0 8px;
+		color: #111827;
+		font-weight: 600;
+		transition: color 0.2s;
+	}
+
+	.post-card:hover .post-title {
+		color: #6db3e8;
+	}
+
+	.post-description {
+		font-size: 14px;
+		color: #6b7280;
+		margin: 0 0 12px;
+		line-height: 1.6;
+	}
+
+	.post-meta {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+		font-size: 12px;
+	}
+
+	.post-date {
+		color: #9ca3af;
+		white-space: nowrap;
+	}
+
+	.post-tags {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
+
+	.tag {
+		display: inline-block;
+		padding: 4px 8px;
+		background: #f3f4f6;
+		color: #6b7280;
+		border-radius: 4px;
+		font-size: 12px;
+		transition: background 0.2s;
+	}
+
+	.tag:hover {
+		background: #e5e7eb;
+	}
+
+	.empty-state {
+		text-align: center;
+		color: #9ca3af;
+		font-size: 14px;
+		padding: 40px 20px;
+	}
+
+	.featured-link {
+		margin-bottom: 36px;
+	}
+
+	.market-cap-card {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 20px;
+		background: linear-gradient(135deg, rgba(109, 179, 232, 0.08) 0%, rgba(64, 176, 219, 0.04) 100%);
+		border: 1.5px solid #6db3e8;
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: all 0.3s ease;
+	}
+
+	.market-cap-card:hover {
+		background: linear-gradient(135deg, rgba(109, 179, 232, 0.12) 0%, rgba(64, 176, 219, 0.08) 100%);
+		border-color: #40b0db;
+		box-shadow: 0 4px 12px rgba(109, 179, 232, 0.15);
+		transform: translateY(-2px);
+	}
+
+	.card-emoji {
+		font-size: 28px;
+		flex-shrink: 0;
+	}
+
+	.card-content {
+		flex: 1;
+	}
+
+	.card-content h3 {
+		font-size: 16px;
+		font-weight: 600;
+		color: #111827;
+		margin: 0 0 4px;
+	}
+
+	.card-content p {
+		font-size: 14px;
+		color: #6b7280;
+		margin: 0;
+	}
+
+	.card-arrow {
+		font-size: 20px;
+		font-weight: 300;
+		color: #6db3e8;
+		flex-shrink: 0;
+		transition: transform 0.2s;
+	}
+
+	.market-cap-card:hover .card-arrow {
+		transform: translateX(4px);
+	}
+
+	@media screen and (max-width: 768px) {
+		#archive-container {
+			padding: 40px 16px 60px;
+		}
+
+		#archive-header h1 {
+			font-size: 28px;
+		}
+
+		#archive-header {
+			margin-bottom: 32px;
+		}
+
+		.post-card {
+			padding: 16px;
+		}
+
+		.post-title {
+			font-size: 18px;
+		}
+	}
+</style>

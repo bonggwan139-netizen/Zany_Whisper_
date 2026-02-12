@@ -1,0 +1,395 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, '../../..');
+const dataPath = path.resolve(projectRoot, 'src/data/marketcap-top10.json');
+const prevDataPath = path.resolve(projectRoot, 'src/data/marketcap-top10.prev.json');
+
+let marketCapData = {
+  updatedAt: new Date().toISOString(),
+  KR: [],
+  US: [],
+};
+
+let prevMarketCapData = {
+  updatedAt: new Date(Date.now() - 86400000).toISOString(),
+  KR: [],
+  US: [],
+};
+
+try {
+  if (fs.existsSync(dataPath)) {
+    const rawData = fs.readFileSync(dataPath, 'utf-8');
+    marketCapData = JSON.parse(rawData);
+  }
+} catch (error) {
+  console.warn('Error loading current market cap data:', error.message);
+}
+
+try {
+  if (fs.existsSync(prevDataPath)) {
+    const rawData = fs.readFileSync(prevDataPath, 'utf-8');
+    prevMarketCapData = JSON.parse(rawData);
+  }
+} catch (error) {
+  console.warn('Error loading previous market cap data:', error.message);
+}
+
+const formatDate = (isoString) => {
+  const date = new Date(isoString);
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};
+
+// 통합 비교 데이터 생성
+const createComparisonData = (currentData, prevData) => {
+  return currentData.map((currentItem) => {
+    const prevItemByRank = prevData.find(p => p.rank === currentItem.rank);
+    const prevItemByCompany = prevData.find(p => p.company === currentItem.company);
+    
+    let change = '=';
+    let changeIcon = '-';
+    let diff = 0;
+    
+    if (!prevItemByCompany) {
+      change = 'NEW';
+      changeIcon = '🆕';
+    } else if (prevItemByCompany.rank !== currentItem.rank) {
+      if (prevItemByCompany.rank > currentItem.rank) {
+        diff = prevItemByCompany.rank - currentItem.rank;
+        change = `▲${diff}`;
+        changeIcon = '▲';
+      } else {
+        diff = currentItem.rank - prevItemByCompany.rank;
+        change = `▼${diff}`;
+        changeIcon = '▼';
+      }
+    }
+    
+    return {
+      rank: currentItem.rank,
+      prevRankCompany: prevItemByRank ? prevItemByRank.company : '-',
+      company: currentItem.company,
+      change,
+      changeIcon,
+      diff
+    };
+  });
+};
+
+const usComparisonData = createComparisonData(marketCapData.US || [], prevMarketCapData.US || []);
+const krComparisonData = createComparisonData(marketCapData.KR || [], prevMarketCapData.KR || []);
+---
+
+<Layout>
+  <div id="marketcap-container">
+    <header id="marketcap-header">
+      <h1>Daily Market Cap Top 10</h1>
+      <p>전 세계 시가총액 상위 기업들</p>
+    </header>
+
+    <!-- US Market -->
+    <section class="market-section">
+      <h2 class="market-title">🇺🇸 United States Market</h2>
+      <span class="market-time">{formatDate(marketCapData.updatedAt)}</span>
+      <div class="table-wrapper">
+        <table class="market-table">
+          <thead>
+            <tr>
+              <th class="col-rank">Rank</th>
+              <th class="col-prev-name">Previous Day</th>
+              <th class="col-name">Today</th>
+              <th class="col-change">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usComparisonData && usComparisonData.length > 0 ? (
+              usComparisonData.map((item) => (
+                <tr class="stock-row">
+                  <td class="col-rank">{item.rank}</td>
+                  <td class="col-prev-name">{item.prevRankCompany}</td>
+                  <td class="col-name">{item.company}</td>
+                  <td class="col-change" data-change={item.changeIcon}>
+                    {item.changeIcon === '🆕' ? (
+                      <span class="change-new">{item.change}</span>
+                    ) : item.changeIcon === '▲' ? (
+                      <span class="change-up">{item.change}</span>
+                    ) : item.changeIcon === '▼' ? (
+                      <span class="change-down">{item.change}</span>
+                    ) : (
+                      <span class="change-same">{item.change}</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colspan="4" class="no-data">No data available</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- KR Market -->
+    <section class="market-section">
+      <h2 class="market-title">🇰🇷 Korea Exchange (KOSPI)</h2>
+      <span class="market-time">{formatDate(marketCapData.updatedAt)}</span>
+      <div class="table-wrapper">
+        <table class="market-table">
+          <thead>
+            <tr>
+              <th class="col-rank">순위</th>
+              <th class="col-prev-name">전일</th>
+              <th class="col-name">금일</th>
+              <th class="col-change">변동</th>
+            </tr>
+          </thead>
+          <tbody>
+            {krComparisonData && krComparisonData.length > 0 ? (
+              krComparisonData.map((item) => (
+                <tr class="stock-row">
+                  <td class="col-rank">{item.rank}</td>
+                  <td class="col-prev-name">{item.prevRankCompany}</td>
+                  <td class="col-name">{item.company}</td>
+                  <td class="col-change" data-change={item.changeIcon}>
+                    {item.changeIcon === '🆕' ? (
+                      <span class="change-new">{item.change}</span>
+                    ) : item.changeIcon === '▲' ? (
+                      <span class="change-up">{item.change}</span>
+                    ) : item.changeIcon === '▼' ? (
+                      <span class="change-down">{item.change}</span>
+                    ) : (
+                      <span class="change-same">{item.change}</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colspan="4" class="no-data">데이터 없음</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer Info -->
+    <footer class="marketcap-footer">
+      <p class="note">
+        <strong>📌 주의:</strong> 데이터는 웹 크롤링을 통해 수집되며 참고용입니다. 
+        정확한 시가총액 정보는 공식 거래소 웹사이트를 참조하시기 바랍니다.
+      </p>
+    </footer>
+  </div>
+</Layout>
+
+<style>
+  #marketcap-container {
+    font-family: Inter, Roboto, 'Helvetica Neue', Arial, sans-serif;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 60px 16px 80px;
+    color: #111827;
+  }
+
+  #marketcap-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  #marketcap-header h1 {
+    font-size: 32px;
+    margin: 0 0 12px;
+    font-weight: 700;
+  }
+
+  #marketcap-header p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 16px;
+  }
+
+  /* Market Sections */
+  .market-section {
+    margin-bottom: 56px;
+  }
+
+  .market-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: #111827;
+  }
+
+  .market-time {
+    display: block;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 12px;
+  }
+
+  /* Table Styling */
+  .table-wrapper {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .market-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .market-table thead {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .market-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .market-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.12s;
+  }
+
+  .market-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .market-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .market-table td {
+    padding: 12px 12px;
+    color: #374151;
+  }
+
+  .col-rank {
+    font-weight: 600;
+    color: #6db3e8;
+    width: 50px;
+    text-align: center;
+  }
+
+  .col-prev-name {
+    font-weight: 500;
+    flex: 1;
+    color: #6b7280;
+  }
+
+  .col-name {
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .col-change {
+    width: 55px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .change-up {
+    color: #ef4444;
+  }
+
+  .change-down {
+    color: #3b82f6;
+  }
+
+  .change-new {
+    color: #8b5cf6;
+    font-weight: 700;
+  }
+
+  .change-same {
+    color: #9ca3af;
+  }
+
+  .no-data {
+    text-align: center;
+    color: #9ca3af;
+    padding: 24px !important;
+  }
+
+  /* Footer */
+  .marketcap-footer {
+    margin-top: 48px;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border-left: 4px solid #6db3e8;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.8;
+  }
+
+  .marketcap-footer p {
+    margin: 0;
+  }
+
+  .note {
+    font-size: 13px;
+  }
+
+  /* Mobile Responsive */
+  @media screen and (max-width: 768px) {
+    #marketcap-container {
+      padding: 40px 12px 60px;
+    }
+
+    #marketcap-header h1 {
+      font-size: 24px;
+    }
+
+    .market-table {
+      font-size: 12px;
+    }
+
+    .market-table th {
+      padding: 8px 8px;
+      font-size: 10px;
+    }
+
+    .market-table td {
+      padding: 10px 8px;
+    }
+
+    .col-rank {
+      width: 40px;
+    }
+
+    .col-prev-name {
+      flex: 0.9;
+    }
+
+    .col-name {
+      flex: 0.9;
+    }
+
+    .col-change {
+      width: 50px;
+    }
+  }
+</style>

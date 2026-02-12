@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="stylesheet" href="/styles/global.css" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Astro Basics</title>
+	</head>
+	<body>
+		<nav class="site-nav">
+			<a class="nav-link" href="/">Home</a>
+			<a class="nav-link" href="/archive">Archive</a>
+			<a class="nav-link" href="/tags">Tags</a>
+			<a class="nav-link" href="/about">About</a>
+			<div id="header-top-right">since 2026</div>
+		</nav>
+		<main class="site-main"><slot /></main>
+	</body>
+</html>
+
+<style>
+	html,
+	body {
+		margin: 0;
+		width: 100%;
+		height: 100%;
+	}
+
+	.site-nav {
+		display: flex;
+		gap: 18px;
+		padding: 10px 0 0 10px;
+		font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+		font-size: 13px;
+		color: #6b7280;
+		background: transparent;
+	}
+
+	.site-nav .nav-link {
+		color: inherit;
+		text-decoration: none;
+		padding: 6px 8px;
+		border-radius: 6px;
+		transition: background .12s, color .12s;
+	}
+
+	.site-nav .nav-link:hover {
+		background: rgba(59,130,246,0.06);
+		color: #1e3a8a;
+	}
+
+	.site-main {
+		min-height: calc(100vh - 48px);
+		position: relative;
+	}
+
+	#header-top-right {
+		position: absolute;
+		top: 10px;
+		right: 24px;
+		font-size: 13px;
+		color: #6b7280;
+		text-transform: uppercase;
+		font-weight: 300;
+		letter-spacing: 1px;
+	}
+</style>

@@ -1,0 +1,17 @@
+{
+  "name": "my-archive",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --port 4321",
+    "astro": "astro",
+    "update:marketcap": "node scripts/fetch-marketcap-top10.mjs"
+  },
+  "dependencies": {
+    "astro": "^5.17.1",
+    "axios": "^1.13.5",
+    "cheerio": "^1.2.0"
+  }
+}

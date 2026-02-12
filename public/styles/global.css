@@ -1,0 +1,22 @@
+/* Global link behavior: keep colors consistent after click, no purple visited color */
+/* Do not affect elements with .button class (buttons keep their own styles) */
+
+/* base anchors without .button keep inherited color and no underline */
+a:not(.button),
+a:not(.button):link,
+a:not(.button):visited,
+a:not(.button):active {
+  color: inherit;
+  text-decoration: none;
+  transition: color .15s ease, opacity .15s ease, filter .12s ease;
+}
+
+/* subtle hover brightness (optional) */
+a:not(.button):hover {
+  filter: brightness(1.04);
+}
+
+/* Ensure buttons keep their intended color/decoration */
+a.button {
+  text-decoration: none;
+}

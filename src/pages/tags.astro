@@ -1,0 +1,71 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+
+const posts = await getCollection('posts');
+
+// count tags
+const tagMap = new Map();
+for (const post of posts) {
+  if (post.data.draft) continue;
+  for (const t of (post.data.tags || [])) {
+    tagMap.set(t, (tagMap.get(t) || 0) + 1);
+  }
+}
+
+const tags = Array.from(tagMap.entries()).sort((a, b) => b[1] - a[1]);
+---
+
+<Layout>
+  <div id="tags-container">
+    <header id="tags-header">
+      <h1>Tags</h1>
+      <p>태그 목록 및 글 개수</p>
+    </header>
+
+    <div id="tags-list">
+      {tags.length === 0 ? (
+        <p class="empty-state">등록된 태그가 없습니다.</p>
+      ) : (
+        tags.map(([tag, count]) => (
+          <a class="tag-pill" href={`/tags/${encodeURIComponent(tag)}`}>
+            <span class="tag-name">{tag}</span>
+            <span class="tag-count">{count}</span>
+          </a>
+        ))
+      )}
+    </div>
+  </div>
+</Layout>
+
+<style>
+#tags-container {
+  font-family: Inter, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 60px 16px 80px;
+}
+
+#tags-header h1 { font-size: 32px; margin: 0 0 8px; }
+#tags-header p { color: #6b7280; margin: 0 0 24px; }
+
+#tags-list { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f3f4f6;
+  color: #0f172a;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 13px;
+  transition: background .12s;
+}
+
+.tag-pill:hover { background: #e6eefb; }
+.tag-count { opacity: .7; font-size: 12px; }
+
+.empty-state { color: #9ca3af; }
+</style>

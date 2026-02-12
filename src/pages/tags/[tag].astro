@@ -1,0 +1,54 @@
+---
+import { getCollection } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+  const tags = new Set();
+  for (const p of posts) {
+    for (const t of (p.data.tags || [])) tags.add(t);
+  }
+  return Array.from(tags).map(tag => ({ params: { tag } }));
+}
+
+const { tag } = Astro.params;
+const posts = (await getCollection('posts'))
+  .filter(p => !p.data.draft && (p.data.tags || []).includes(tag))
+  .sort((a,b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+---
+
+<Layout>
+  <div id="tag-page">
+    <header>
+      <h1>#{tag}</h1>
+      <p>{posts.length}개의 글</p>
+    </header>
+
+    <div id="tag-posts">
+      {posts.length === 0 ? (
+        <p class="empty-state">해당 태그의 글이 없습니다.</p>
+      ) : (
+        posts.map(post => (
+          <article class="post-card">
+            <a class="post-link" href={`/posts/${post.slug}`}>
+              <h2>{post.data.title}</h2>
+            </a>
+            <p class="post-description">{post.data.description}</p>
+            <div class="meta"><time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString('ko-KR')}</time></div>
+          </article>
+        ))
+      )}
+    </div>
+  </div>
+</Layout>
+
+<style>
+#tag-page { max-width: 800px; margin: 0 auto; padding: 60px 16px 80px; font-family: Inter, Arial, sans-serif; }
+#tag-page h1 { font-size: 32px; margin: 0 0 8px; }
+#tag-page p { color: #6b7280; margin: 0 0 24px; }
+.post-card { padding: 18px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 18px; }
+.post-link { text-decoration: none; color: inherit; }
+.post-card h2 { margin: 0 0 8px; font-size: 18px; }
+.post-description { color: #6b7280; margin: 0 0 12px; }
+.meta { color: #9ca3af; font-size: 13px; }
+</style>

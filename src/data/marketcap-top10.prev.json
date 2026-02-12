@@ -1,0 +1,87 @@
+{
+  "updatedAt": "2026-02-11T08:34:58.172Z",
+  "KR": [
+    {
+      "rank": 1,
+      "company": "Samsung Electronics"
+    },
+    {
+      "rank": 2,
+      "company": "SK Hynix"
+    },
+    {
+      "rank": 3,
+      "company": "NAVER"
+    },
+    {
+      "rank": 4,
+      "company": "Kakao"
+    },
+    {
+      "rank": 5,
+      "company": "Hyundai Motor"
+    },
+    {
+      "rank": 6,
+      "company": "LG Electronics"
+    },
+    {
+      "rank": 7,
+      "company": "POSCO Holdings"
+    },
+    {
+      "rank": 8,
+      "company": "Samsung SDI"
+    },
+    {
+      "rank": 9,
+      "company": "Samsung SDS"
+    },
+    {
+      "rank": 10,
+      "company": "SK Telecom"
+    }
+  ],
+  "US": [
+    {
+      "rank": 1,
+      "company": "Apple Inc."
+    },
+    {
+      "rank": 2,
+      "company": "Microsoft Corporation"
+    },
+    {
+      "rank": 3,
+      "company": "Saudi Aramco"
+    },
+    {
+      "rank": 4,
+      "company": "Alphabet Inc."
+    },
+    {
+      "rank": 5,
+      "company": "Amazon.com Inc."
+    },
+    {
+      "rank": 6,
+      "company": "Tesla Inc."
+    },
+    {
+      "rank": 7,
+      "company": "Berkshire Hathaway Inc."
+    },
+    {
+      "rank": 8,
+      "company": "Nvidia Corporation"
+    },
+    {
+      "rank": 9,
+      "company": "Meta Platforms Inc."
+    },
+    {
+      "rank": 10,
+      "company": "Broadcom Inc."
+    }
+  ]
+}

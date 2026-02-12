@@ -1,0 +1,147 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout>
+	<div id="about-container">
+		<header id="about-header">
+			<a href="/" class="back-link">← 돌아가기</a>
+		</header>
+
+		<article id="about-content">
+			<h1>소개</h1>
+			
+			<section class="about-section">
+				<h2>안녕하세요</h2>
+				<p>
+					Zany_Whisper_ 의 Life Portfolio에 오신 것을 환영합니다.
+					이곳은 일상 속 작은 순간들과 생각들을 차분히 기록하는 개인 아카이브입니다.
+				</p>
+			</section>
+
+			<section class="about-section">
+				<h2>이 공간의 의미</h2>
+				<p>
+					세상은 크고 화려한 것들을 추구하도록 우리를 자극합니다. 
+					하지만 때로는 일상의 순간들 속에서 가장 깊은 의미를 찾을 수 있습니다.
+				</p>
+				<p>
+					매일의 경험과 생각을 기록함으로써, 우리는 자신을 더 잘 알게 되고, 
+					삶의 흐름을 이해하게 됩니다. 이러한 기록들은 시간이 흐른 후 
+					소중한 자산이 됩니다.
+				</p>
+			</section>
+
+			<section class="about-section">
+				<h2>기록의 가치</h2>
+				<ul>
+					<li>일상의 순간들을 보존하는 것</li>
+					<li>자신의 성장 과정을 추적하는 것</li>
+					<li>생각과 감정을 정리하는 것</li>
+					<li>개인의 역사를 만드는 것</li>
+				</ul>
+			</section>
+
+			<section class="about-section">
+				<h2>함께 하기</h2>
+				<p>
+					<a href="/archive">기록 탐색</a>으로 이곳의 글들을 둘러보세요.
+					평범해 보이는 순간들이 만드는 의미를 함께 나누고 싶습니다.
+				</p>
+			</section>
+		</article>
+	</div>
+</Layout>
+
+<style>
+	#about-container {
+		font-family: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
+		max-width: 720px;
+		margin: 0 auto;
+		padding: 60px 16px 80px;
+		color: #111827;
+	}
+
+	#about-header {
+		margin-bottom: 48px;
+	}
+
+	.back-link {
+		display: inline-block;
+		color: #6db3e8;
+		text-decoration: none;
+		font-size: 14px;
+		transition: color 0.2s;
+	}
+
+	.back-link:hover {
+		color: #40b0db;
+	}
+
+	#about-content h1 {
+		font-size: 40px;
+		margin: 0 0 32px;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.about-section {
+		margin-bottom: 40px;
+	}
+
+	.about-section h2 {
+		font-size: 24px;
+		margin: 0 0 16px;
+		font-weight: 600;
+		color: #111827;
+	}
+
+	.about-section p {
+		font-size: 16px;
+		color: #374151;
+		line-height: 1.8;
+		margin: 0 0 16px;
+	}
+
+	.about-section p a {
+		color: #6db3e8;
+		text-decoration: none;
+		transition: color 0.2s;
+	}
+
+	.about-section p a:hover {
+		color: #40b0db;
+		text-decoration: underline;
+	}
+
+	.about-section ul {
+		margin: 0;
+		padding-left: 24px;
+		color: #374151;
+		font-size: 16px;
+		line-height: 1.8;
+	}
+
+	.about-section li {
+		margin: 8px 0;
+	}
+
+	@media screen and (max-width: 768px) {
+		#about-container {
+			padding: 40px 16px 60px;
+		}
+
+		#about-content h1 {
+			font-size: 32px;
+		}
+
+		.about-section h2 {
+			font-size: 20px;
+		}
+
+		.about-section p,
+		.about-section ul {
+			font-size: 15px;
+		}
+	}
+</style>

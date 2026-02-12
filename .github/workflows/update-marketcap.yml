@@ -1,0 +1,59 @@
+name: Update Market Cap Data Daily
+
+on:
+  schedule:
+    # 08:00 KST = 23:00 UTC (previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-marketcap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch market cap data
+        run: npm run fetch:marketcap
+        env:
+          MARKET_DATA_API_KEY: ${{ secrets.MARKET_DATA_API_KEY }}
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/data/marketcap-top10.json
+          git commit -m "chore: update market cap data at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git push
+
+      - name: Trigger build and deploy
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          echo "Market cap data updated successfully"
+          echo "Repository updated at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
