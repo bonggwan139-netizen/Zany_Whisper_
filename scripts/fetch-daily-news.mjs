@@ -218,22 +218,34 @@ async function processSource(category, source) {
 
 async function main() {
   console.log('Daily News v1 - fetch start');
-  const result = { updatedAt: new Date().toISOString(), categories: { World: [], Science: [], Economy: [] }, errors: [] };
+  const result = { updatedAt: new Date().toISOString(), categories: { world: [], science: [], economy: [] }, errors: [] };
 
   for (const [category, sources] of Object.entries(SOURCES)) {
+    const targetKey = category.toLowerCase();
+    // ensure exactly the number of configured sources (SOURCES[category]) are represented
     for (const source of sources) {
       try {
         const { out, count, error } = await processSource(category, source);
-        result.categories[category].push(out);
-        if (error) result.errors.push({ category, source: source.name, rss: source.rss, reason: error });
+        // attach error into out if present
+        if (error) out.error = error;
+        // ensure items array exists
+        out.items = Array.isArray(out.items) ? out.items : [];
+        result.categories[targetKey].push(out);
+        if (error) result.errors.push({ category: targetKey, source: source.name, rss: source.rss, reason: error });
         // avoid hammering
         await new Promise(r => setTimeout(r, 800));
       } catch (err) {
         const reason = err && err.message ? err.message : String(err);
         console.warn(`${category} / ${source.name}: unexpected error -> ${reason}`);
-        result.categories[category].push({ source: source.name, rss: source.rss, items: [] });
-        result.errors.push({ category, source: source.name, rss: source.rss, reason });
+        result.categories[targetKey].push({ source: source.name, rss: source.rss, items: [], error: reason });
+        result.errors.push({ category: targetKey, source: source.name, rss: source.rss, reason });
       }
+    }
+    // If for any reason the array length is less than configured, pad with placeholders
+    while (result.categories[targetKey].length < sources.length) {
+      const idx = result.categories[targetKey].length;
+      const s = sources[idx];
+      result.categories[targetKey].push({ source: s.name, rss: s.rss, items: [], error: 'no data' });
     }
   }
 

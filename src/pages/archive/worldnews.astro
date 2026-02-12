@@ -54,7 +54,11 @@ const categoryOrder = ['world', 'science', 'economy'];
       <section class="news-category">
         <h2 class="category-title">{categoryLabels[category]}</h2>
         <div class="sources-grid">
-          {newsData && newsData.categories && newsData.categories[category] ? (
+          {(!newsData || !newsData.categories) ? (
+            <p class="no-data">데이터 로드 오류(콘솔 확인)</p>
+          ) : newsData.categories[category] && newsData.categories[category].length === 0 ? (
+            <div class="no-data">수집된 출처가 없습니다(또는 데이터가 비어있습니다).</div>
+          ) : (
             newsData.categories[category].map((sourceEntry) => (
               <div class="source-card" id={sourceEntry.source ? sourceEntry.source.replace(/\s+/g, '-') : ''}>
                 <h3 class="source-name">{sourceEntry.source || 'Unknown source'}</h3>
@@ -88,8 +92,6 @@ const categoryOrder = ['world', 'science', 'economy'];
                 </div>
               </div>
             ))
-          ) : (
-            <p class="no-data">데이터 로드 오류(콘솔 확인)</p>
           )}
         </div>
       </section>
