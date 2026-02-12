@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 import Parser from 'rss-parser';
-import { OpenAI } from 'openai';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { OpenAI } from 'openai';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataPath = path.resolve(__dirname, '../src/data/daily-news.json');
+const DATA_PATH = path.resolve(__dirname, '../src/data/daily-news.json');
 
 const parser = new Parser({
   customFields: {
@@ -15,431 +15,243 @@ const parser = new Parser({
   }
 });
 
-// OpenAI 클라이언트
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || ''
-});
-
-// RSS 출처 설정 (각 카테고리별 정확히 3개, 동작 확인 후 대체 소스 사용)
-const NEWS_SOURCES = {
-  world: [
-    { name: 'BBC World', url: 'http://feeds.bbci.co.uk/news/world/rss.xml' },
-    { name: 'The Guardian World', url: 'https://www.theguardian.com/world/rss' },
-    { name: 'Al Jazeera English', url: 'https://www.aljazeera.com/xml/rss/all.xml' }
-  ],
-  science: [
-    { name: 'NASA Breaking News', url: 'https://www.nasa.gov/rss/dyn/breaking_news.rss' },
-    { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml' },
-    { name: 'Phys.org', url: 'https://phys.org/rss-feed/' }
-  ],
-  economy: [
-    { name: 'CNBC Top News', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-    { name: 'MarketWatch Top Stories', url: 'https://feeds.marketwatch.com/marketwatch/topstories/' },
-    { name: 'Investing News', url: 'https://www.investing.com/rss/news.rss' }
-  ]
-};
-
-// 대체 후보 목록 (fetch 시 items가 0이면 이 중에서 대체)
-const FALLBACK_CANDIDATES = {
-  world: [
-    { name: 'NYTimes World', url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml' }
-  ],
-  science: [
-    { name: 'Nature News', url: 'https://www.nature.com/nature/current_issue/rss/' }
-  ],
-  economy: [
-    { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
-    { name: 'Financial Times', url: 'https://www.ft.com/?format=rss' }
-  ]
-};
-
-const ARTICLES_PER_SOURCE = 5;
 const USER_AGENT = 'Mozilla/5.0 (compatible; ZanyWhisperBot/1.0; +https://bonggwan139-netizen.github.io/Zany_Whisper_/)';
-const FETCH_TIMEOUT = 12000; // ms
-const FETCH_RETRIES = 2;
+const TIMEOUT = 12000; // ms
+const RETRIES = 2;
+const ITEMS_PER_SOURCE = 5;
 
-/**
- * RSS 피드에서 기사 수집
- */
-async function fetchArticlesFromRSS(source) {
-  // Returns { articles: [], error: null|string, status: number|null }
-  let attempt = 0;
-  let lastErr = null;
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+const HAS_OPENAI = !!(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
 
-  console.log(`  -> Source: ${source.name} (${source.url})`);
+// Fixed working RSS sources per category
+const SOURCES = {
+  World: [
+    { name: 'BBC World', rss: 'http://feeds.bbci.co.uk/news/world/rss.xml' },
+    { name: 'The Guardian', rss: 'https://www.theguardian.com/world/rss' },
+    { name: 'Al Jazeera', rss: 'https://www.aljazeera.com/xml/rss/all.xml' }
+  ],
+  Science: [
+    { name: 'NASA Breaking News', rss: 'https://www.nasa.gov/rss/dyn/breaking_news.rss' },
+    { name: 'ScienceDaily', rss: 'https://www.sciencedaily.com/rss/all.xml' },
+    { name: 'Phys.org', rss: 'https://phys.org/rss-feed/' }
+  ],
+  Economy: [
+    { name: 'CNBC Top News', rss: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
+    { name: 'MarketWatch Top Stories', rss: 'https://feeds.marketwatch.com/marketwatch/topstories/' },
+    { name: 'The Economist', rss: 'https://www.economist.com/the-world-this-week/rss.xml' }
+  ]
+};
 
-  while (attempt <= FETCH_RETRIES) {
-    attempt += 1;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+// Local fallback summary generator: 5-8 short sentences, single paragraph
+function localSummaryFromText(text, minSentences = 5, maxSentences = 8) {
+  if (!text || typeof text !== 'string') return '요약할 내용이 부족합니다.';
+  // sanitize
+  const cleaned = text.replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 800);
 
-    try {
-      const res = await fetch(source.url, {
-        redirect: 'follow',
-        signal: controller.signal,
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
-        }
-      });
+  // split into rough sentences
+  const raw = cleaned.split(/[.?!]+/).map(s => s.trim()).filter(Boolean);
+  const take = Math.min(Math.max(minSentences, 1), maxSentences);
+  const sentences = raw.slice(0, take);
 
-      clearTimeout(timeout);
-      const status = res.status || null;
-      console.log(`     Attempt ${attempt} - Fetch status: ${status}`);
-
-      if (!res.ok) {
-        lastErr = `Fetch failed with status ${status}`;
-        console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
-        if (attempt <= FETCH_RETRIES) continue;
-        return { articles: [], error: lastErr, status };
-      }
-
-      const xml = await res.text();
-      let feed;
-      try {
-        feed = await parser.parseString(xml);
-      } catch (perr) {
-        lastErr = `Parse failed: ${perr.message}`;
-        console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
-        if (attempt <= FETCH_RETRIES) continue;
-        return { articles: [], error: lastErr, status };
-      }
-
-      const rawItems = Array.isArray(feed.items) ? feed.items.slice(0, ARTICLES_PER_SOURCE) : [];
-
-      const articles = rawItems.map((item, idx) => ({
-        id: `${Date.now()}-${idx}`,
-        title: item.title || 'No title',
-        description: item.description || item.summary || '',
-        content: item.content || '', // mapped from content:encoded by parser config
-        contentSnippet: item.contentSnippet || '',
-        link: item.link || '',
-        pubDate: item.pubDate || new Date().toISOString()
-      }));
-
-      console.log(`     Parse success: ${rawItems.length > 0 ? 'yes' : 'no'}`);
-      console.log(`     Final items: ${articles.length}`);
-
-      return { articles, error: null, status };
-    } catch (err) {
-      clearTimeout(timeout);
-      lastErr = err && err.name === 'AbortError' ? 'timeout' : (err && err.message ? err.message : String(err));
-      console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
-      if (attempt > FETCH_RETRIES) {
-        return { articles: [], error: lastErr, status: null };
-      }
-      // else retry
-    }
-  }
-}
-
-/**
- * Title만 기반으로 5~8문장 한국어 요약 생성 (입력 텍스트 부족 시)
- */
-/**
- * Title 기반 요약 생성 (OpenAI 호출 없이 로컬에서 5~8문장 길이의 문단을 생성)
- * - 외부 API를 호출하지 않음
- * - 항상 하나의 단락 문자열을 반환
- */
-function generateTitleBasedSummary(title) {
-  if (!title || title.trim().length === 0) {
-    return '뉴스 내용을 확인해주세요.';
+  // If not enough sentences, synthesize from title-like fragments
+  while (sentences.length < minSentences) {
+    sentences.push(sentences.length ? sentences[sentences.length - 1] : cleaned);
+    if (sentences.length >= maxSentences) break;
   }
 
-  const base = title.trim();
-  const variants = [
-    `${base}과 관련된 주요 소식이 전해졌다.`,
-    `해당 사안은 최근의 흐름과 연결되어 있으며 여러 이해관계자들이 주목하고 있다.`,
-    `현장에서 확인된 내용에 따르면 핵심 쟁점은 관련 정책과 시장 반응에 있다.`,
-    `향후 전개에 따라 추가 발표나 후속 보도가 이어질 가능성이 높다.`,
-    `전문가들은 상황의 파급력을 면밀히 관찰하고 있다.`,
-    `당분간 관련 동향을 주의 깊게 살필 필요가 있다.`,
-    `현재까지 확인된 사실을 종합하면 핵심 포인트는 위주로 정리된다.`
-  ];
-
-  // 조합해 5~8문장 길이의 단락으로 만든다
-  const sentences = [];
-  // 첫 문장은 제목을 직접 포함
-  sentences.push(variants[0]);
-
-  // 뒤에 4~7문장을 채운다 (총 5~8문장)
-  const needed = 4 + Math.floor(Math.random() * 4); // 4..7
-  for (let i = 1; i <= needed && i < variants.length; i++) {
-    sentences.push(variants[i]);
-  }
-
-  let paragraph = sentences.join(' ');
-  paragraph = paragraph.replace(/\s+/g, ' ').trim();
+  let paragraph = sentences.join('. ');
   if (!paragraph.endsWith('.')) paragraph += '.';
+  // ensure short clear sentences: collapse multiple spaces
+  paragraph = paragraph.replace(/\s+/g, ' ').trim();
   return paragraph;
 }
 
-/**
- * OpenAI를 사용한 번역 및 요약 생성
- * 에세이 형식: 8-12줄 단일 문단, 자연스러운 한국어
- */
-async function translateAndSummarize(article) {
-  const hasApiKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0;
-
-  // 입력 텍스트 우선순위: content > contentSnippet > description > title
-  let inputText = (article.content || article.contentSnippet || article.description || '').trim();
-
-  // 입력 텍스트가 너무 짧으면 (100자 미만) title 기반 요약 사용 (OpenAI 호출하지 않음)
-  if (!inputText || inputText.length < 100) {
-    const summary = generateTitleBasedSummary(article.title || article.description || '');
-    return {
-      titleKo: article.title || '',
-      summary
-    };
+async function fetchWithRetries(url, options = {}) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= RETRIES + 1; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT);
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        lastErr = `status ${res.status}`;
+        // try next attempt
+        continue;
+      }
+      const text = await res.text();
+      return { ok: true, status: res.status, text };
+    } catch (err) {
+      clearTimeout(timeout);
+      lastErr = err && err.name === 'AbortError' ? 'timeout' : (err && err.message ? err.message : String(err));
+      // continue to retry
+    }
   }
+  return { ok: false, error: lastErr };
+}
 
-  if (!hasApiKey) {
-    // OpenAI 키가 없으면 입력 텍스트 기반 로컬 fallback
-    const fallback = generateFallbackSummary(inputText || article.description || article.title || '');
-    return {
-      titleKo: article.title || '',
-      summary: fallback
-    };
-  }
+async function fetchAndParseRSS(rssUrl) {
+  const res = await fetchWithRetries(rssUrl, {
+    redirect: 'follow',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+    }
+  });
+
+  if (!res.ok) return { ok: false, reason: res.error || 'fetch failed' };
 
   try {
-    // HTML 태그 제거
-    inputText = inputText.replace(/<[^>]*>/g, '').trim();
+    const feed = await parser.parseString(res.text);
+    const items = Array.isArray(feed.items) ? feed.items.slice(0, ITEMS_PER_SOURCE) : [];
+    return { ok: true, status: res.status, items };
+  } catch (err) {
+    return { ok: false, reason: err && err.message ? err.message : String(err) };
+  }
+}
 
-    const textToProcess = `
-Title: ${article.title}
-Content: ${inputText.substring(0, 1000)}
-    `.trim();
+async function generateOpenAISummary(title, text) {
+  try {
+    const prompt = `You are a professional Korean news editor. Given the title and a short article excerpt, translate the title into natural Korean and write an essay-style single-paragraph summary (8-12 short lines worth) in Korean. Do NOT use bullets or numbered lists. Do not use meta phrases like "이 기사는". Output JSON: {"titleKo": "...", "summary": "..."}`;
 
-    const response = await openai.chat.completions.create({
+    const inputText = `Title: ${title}\nContent: ${text.substring(0, 1000)}`;
+
+    const resp = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert Korean journalist specializing in news summarization. Your task is to:
-
-1. Translate the article title accurately to natural, idiomatic Korean
-2. Write a concise essay-style summary in Korean (8-12 lines)
-3. Structure the summary: key context → background → main content → implication/significance
-4. Format: Single paragraph only (ONE continuous text, no bullets, no line breaks, no array)
-5. Language guidelines:
-   - Write naturally like a professional journalist, not a machine
-   - Keep sentences short and direct for clarity
-   - Avoid unnecessary repetition
-   - Do not use overly formal or stiff language
-   - Never start with meta-expressions like "이 기사는...", "해당 뉴스에 따르면...", "보도에 의하면..."
-   - Use active voice when possible
-   - Connect ideas smoothly for good flow
-6. Content guidelines:
-   - Include the key facts and main points
-   - Explain briefly why this matters (implication/significance)
-   - Maintain strict objectivity - no personal opinions, judgments, or excessive evaluation
-   - Avoid promotional or sensationalist language
-   - Never add subjective phrases like "흥미롭게도", "놀랍게도" at the end
-
-The summary must be returned as a SINGLE CONTINUOUS PARAGRAPH with NO line breaks within the text.`
-        },
-        {
-          role: 'user',
-          content: `Please translate the title to Korean and write an essay-style summary in Korean based on the following article:
-
-${textToProcess}
-
-Requirements:
-- Summary must be 8-12 lines in ONE continuous paragraph
-- Natural journalist writing style
-- SINGLE PARAGRAPH ONLY - do not include line breaks, bullets, or arrays
-- Objective and factual tone
-
-Format your response as JSON: { "titleKo": "translated title in Korean", "summary": "complete summary paragraph here with no line breaks" }`
-        }
-      ],
+      messages: [{ role: 'system', content: prompt }, { role: 'user', content: inputText }],
       temperature: 0.3,
       max_tokens: 600
     });
 
-    const content = response.choices[0].message.content;
-    const parsed = JSON.parse(content);
+    const content = resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content;
+    if (!content) throw new Error('empty response');
 
-    // 혹시 summary에 줄바꿈이 포함되어 있으면 공백으로 통일
-    const cleanSummary = (parsed.summary || generateFallbackSummary(inputText))
-      .trim()
-      .replace(/\n\n+/g, ' ')
-      .replace(/\n/g, ' ');
+    // Expect JSON. Try to parse; if fails, fallback to raw text.
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      // Attempt to extract JSON substring
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    }
 
-    return {
-      titleKo: parsed.titleKo || article.title,
-      summary: cleanSummary
-    };
+    if (parsed && parsed.titleKo && parsed.summary) {
+      const summary = parsed.summary.replace(/\n+/g, ' ').trim();
+      return { titleKo: parsed.titleKo.trim(), summary };
+    }
+
+    // As a last resort, use raw content as paragraph
+    const raw = content.replace(/\n+/g, ' ').trim();
+    return { titleKo: title, summary: raw };
   } catch (err) {
-    console.warn(`⚠️  OpenAI API error:`, err && err.message ? err.message : String(err));
-    // OpenAI 실패 시에도 title/description 기반 로컬 요약으로 대체
-    const fallbackSourceText = inputText || article.description || article.title || '';
-    return {
-      titleKo: article.title || '',
-      summary: generateFallbackSummary(fallbackSourceText)
-    };
+    throw err;
   }
 }
 
-/**
- * Fallback 요약: 텍스트를 자연스러운 문단으로 정렬 (5~8문장)
- * 절대 placeholder나 "[정보 제한]" 같은 마크를 포함하지 않음
- */
-function generateFallbackSummary(text) {
-  // HTML 태그 제거
-  let cleanText = text.replace(/<[^>]*>/g, '').trim();
-  
-  // 첫 800자 사용
-  cleanText = cleanText.substring(0, 800);
-  
-  // 문장 분할
-  const sentences = cleanText
-    .split(/[.!?]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
-    .slice(0, 8); // 최대 8문장
-  
-  if (sentences.length === 0) {
-    return '뉴스 내용을 확인해주세요.';
+async function processSource(category, source) {
+  console.log(`Processing ${category} - ${source.name} -> ${source.rss}`);
+  const notePrefix = `${category} / ${source.name}`;
+  const out = { source: source.name, rss: source.rss, items: [] };
+  const res = await fetchAndParseRSS(source.rss);
+  if (!res.ok) {
+    console.warn(`${notePrefix}: failed -> ${res.reason || res.error || 'unknown'}`);
+    return { out, count: 0, error: res.reason || res.error || 'fetch failed' };
   }
-  
-  // 자연스러운 문단으로 연결 (절대 placeholder 추가 금지)
-  let summary = sentences.join(' ');
-  
-  // 마침표로 끝나도록 정리
-  summary = summary.trim();
-  if (!summary.endsWith('.')) {
-    summary += '.';
-  }
-  
-  return summary;
-}
 
-/**
- * 모든 뉴스 카테고리 수집
- */
-async function fetchAllNews() {
-  const result = {
-    updatedAt: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-    categories: {
-      world: [],
-      science: [],
-      economy: []
-    },
-    errors: []
-  };
+  const rawItems = res.items || [];
+  for (const it of rawItems) {
+    // input priority: content (content:encoded) -> contentSnippet -> description -> title
+    const inputText = (it.content || it.contentSnippet || it.description || it.summary || '').toString().trim();
+    const title = (it.title || '').toString().trim();
+    const link = it.link || it.guid || '';
+    const pubDate = it.pubDate || new Date().toISOString();
 
-  // Source별 통계
-  const stats = {};
+    let translatedTitle = title;
+    let summary = '';
 
-  for (const [category, sources] of Object.entries(NEWS_SOURCES)) {
-    console.log(`\n📰 ${category.toUpperCase()} 뉴스 수집 중...`);
-    stats[category] = {};
-
-    for (const source of sources) {
-      // Try primary source first
-      let res = await fetchArticlesFromRSS(source);
-      let articles = Array.isArray(res.articles) ? res.articles : [];
-      let error = res.error || null;
-      stats[category][source.name] = articles.length;
-
-      // If no items, try fallback candidates for this category
-      if ((!articles || articles.length === 0) && Array.isArray(FALLBACK_CANDIDATES[category])) {
-        console.log(`     No items from ${source.name}, trying fallback candidates...`);
-        for (const alt of FALLBACK_CANDIDATES[category]) {
-          console.log(`     Trying fallback ${alt.name} -> ${alt.url}`);
-          const altRes = await fetchArticlesFromRSS(alt);
-          const altArticles = Array.isArray(altRes.articles) ? altRes.articles : [];
-          if (altArticles && altArticles.length > 0) {
-            articles = altArticles;
-            error = null;
-            // replace source info to indicate replacement
-            source.name = `${source.name} (fallback: ${alt.name})`;
-            source.url = alt.url;
-            stats[category][source.name] = articles.length;
-            console.log(`     Fallback succeeded: ${alt.name} -> ${articles.length} items`);
-            break;
-          } else {
-            console.log(`     Fallback ${alt.name} returned ${altArticles.length} items`);
-          }
+    try {
+      if (HAS_OPENAI && inputText && inputText.length >= 100) {
+        try {
+          const ai = await generateOpenAISummary(title, inputText);
+          translatedTitle = ai.titleKo || title;
+          summary = ai.summary || '';
+        } catch (err) {
+          console.warn(`${notePrefix}: OpenAI failed -> ${err.message || String(err)}; falling back to local summary`);
+          translatedTitle = title;
+          summary = localSummaryFromText(inputText, 5, 8);
         }
+      } else {
+        // no OpenAI or input too short -> local fallback
+        translatedTitle = title;
+        const fallbackSource = inputText || title;
+        summary = localSummaryFromText(fallbackSource, 5, 8);
       }
-
-      // Prepare source entry
-      const sourceEntry = {
-        source: source.name,
-        url: source.url,
-        items: [],
-        itemCount: articles.length,
-        error: error
-      };
-
-      if (error) {
-        result.errors.push({ category, source: source.name, url: source.url, reason: error });
-        console.warn(`  [ERROR] ${category} - ${source.name}: ${error}`);
-      }
-
-      for (const article of articles) {
-        const { titleKo, summary } = await translateAndSummarize(article);
-        sourceEntry.items.push({
-          id: article.id,
-          titleEn: article.title,
-          titleKo,
-          summary,
-          link: article.link,
-          pubDate: article.pubDate
-        });
-      }
-
-      result.categories[category].push(sourceEntry);
-
-      // API 호출 제한 방지
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      translatedTitle = title;
+      summary = localSummaryFromText(inputText || title, 5, 8);
     }
+
+    // ensure single paragraph string
+    summary = (summary || '').replace(/\n+/g, ' ').trim();
+
+    out.items.push({
+      source: source.name,
+      sourceUrl: source.rss,
+      title,
+      translatedTitle,
+      summary,
+      url: link,
+      publishedAt: new Date(pubDate).toISOString()
+    });
   }
 
-  return { data: result, stats };
+  console.log(`${notePrefix}: collected ${out.items.length} items`);
+  return { out, count: out.items.length, error: null };
 }
 
-/**
- * 메인: 뉴스 수집 및 저장
- */
 async function main() {
-  try {
-    console.log('🌍 Daily News 수집 시작...\n');
+  console.log('Daily News v1 - fetch start');
+  const result = { updatedAt: new Date().toISOString(), categories: { World: [], Science: [], Economy: [] }, errors: [] };
 
-    const { data: newsData, stats } = await fetchAllNews();
-
-    // 파일 저장 (덮어쓰기)
-    fs.writeFileSync(dataPath, JSON.stringify(newsData, null, 2), 'utf-8');
-    
-    // 통계 출력
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 NEWS COLLECTION SUMMARY');
-    console.log('='.repeat(60));
-
-    let totalArticles = 0;
-    for (const [category, sources] of Object.entries(stats)) {
-      const categoryTotal = Object.values(sources).reduce((a, b) => a + b, 0);
-      totalArticles += categoryTotal;
-      
-      console.log(`\n[${category.toUpperCase()}] 총 ${categoryTotal}개 수집`);
-      for (const [sourceName, count] of Object.entries(sources)) {
-        const status = count > 0 ? '✅' : '⚠️ ';
-        console.log(`  ${status} ${sourceName}: ${count}개`);
+  for (const [category, sources] of Object.entries(SOURCES)) {
+    for (const source of sources) {
+      try {
+        const { out, count, error } = await processSource(category, source);
+        result.categories[category].push(out);
+        if (error) result.errors.push({ category, source: source.name, rss: source.rss, reason: error });
+        // avoid hammering
+        await new Promise(r => setTimeout(r, 800));
+      } catch (err) {
+        const reason = err && err.message ? err.message : String(err);
+        console.warn(`${category} / ${source.name}: unexpected error -> ${reason}`);
+        result.categories[category].push({ source: source.name, rss: source.rss, items: [] });
+        result.errors.push({ category, source: source.name, rss: source.rss, reason });
       }
     }
-
-    console.log('\n' + '-'.repeat(60));
-    console.log(`✅ 전체 수집 완료: ${totalArticles}개`);
-    console.log(`   저장 위치: ${dataPath}`);
-    console.log(`   업데이트 시간: ${newsData.updatedAt}`);
-    console.log('='.repeat(60));
-  } catch (error) {
-    console.error('❌ 뉴스 수집 중 오류:', error.message);
-    process.exit(1);
   }
+
+  // write file (overwrite)
+  try {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(result, null, 2), 'utf-8');
+    console.log(`Saved daily news to ${DATA_PATH}`);
+  } catch (err) {
+    console.error('Failed to write data file:', err && err.message ? err.message : String(err));
+    process.exitCode = 2;
+    return;
+  }
+
+  console.log('Daily News v1 - fetch complete');
 }
 
-main();
+// Run
+main().catch(err => {
+  console.error('Fatal error:', err && err.message ? err.message : String(err));
+  process.exit(1);
+});

@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pages: write
-      id-token: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -24,25 +22,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Fetch daily news
-        run: node scripts/fetch-daily-news.mjs
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Commit and push changes (always)
         run: |
-          set -e
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add src/data/daily-news.json || true
-          git commit -m "chore: update daily news" || echo "No changes to commit"
-          # Attempt to push to main; log on failure but do not fail the job
-          git push origin HEAD:main || echo "Push failed (exit code $?); check repository permissions and logs"
+          node scripts/fetch-daily-news.mjs
 
-      - name: Done
-        run: echo "Daily news update workflow finished at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+      - name: Commit and push when changed
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          git config --global user.name "$GIT_AUTHOR_NAME"
+          git config --global user.email "$GIT_AUTHOR_EMAIL"
+          git add src/data/daily-news.json || true
+          if git diff --staged --quiet --exit-code; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update daily news"
+            git push origin HEAD:main
+          fi
