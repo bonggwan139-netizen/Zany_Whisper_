@@ -23,16 +23,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Fetch market cap data
-        run: npm run fetch:marketcap
-        env:
-          MARKET_DATA_API_KEY: ${{ secrets.MARKET_DATA_API_KEY }}
+        run: npm run update:marketcap
+        continue-on-error: false
 
       - name: Check for changes
         id: check_changes
@@ -48,9 +47,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add src/data/marketcap-top10.json
-          git commit -m "chore: update market cap data at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git add src/data/marketcap-top10.json src/data/marketcap-top10.prev.json
+          git commit -m "chore: update marketcap top10 (auto)"
           git push
+        continue-on-error: false
 
       - name: Trigger build and deploy
         if: steps.check_changes.outputs.has_changes == 'true'
