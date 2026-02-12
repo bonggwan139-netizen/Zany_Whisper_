@@ -1,0 +1,129 @@
+{
+  "updatedAt": "2026-02-12",
+  "world": [
+    {
+      "source": "BBC World",
+      "titleEn": "Global leaders meet on climate talks",
+      "titleKo": "세계 지도자들 기후 회담 개최",
+      "summary": "• 국제 기후 협약 논의 진행 중\n• 여러 국가의 탄소 감축 목표 발표\n• 파리협정 후속 조치 논의\n• 신재생 에너지 투자 확대 제안\n• 선진국과 개발도상국 간 이견 존재\n• 2030년 감축 목표 설정\n• 자금 지원 방안 협의\n• 산업계 참여 강조\n• 다음 회담 일정 확정\n• 국내 정책 추진 계획 수립",
+      "link": "https://www.bbc.com/news/world",
+      "pubDate": "2026-02-12T10:00:00Z"
+    },
+    {
+      "source": "BBC World",
+      "titleEn": "Major earthquake strikes Southeast Asia",
+      "titleKo": "동남아시아 지진 발생",
+      "summary": "• 규모 6.8 지진 기록\n• 여러 지역에서 피해 보도\n• 쓰나미 경보 발령됨\n• 대피 작업 진행 중\n• 주민 안전 확인 작업\n• 긴급 구조대 출동\n• 건물 손상 평가 시작\n• 국제 지원 요청\n• 통신망 일부 두절\n• 복구 계획 수립 중",
+      "link": "https://www.bbc.com/news/world",
+      "pubDate": "2026-02-12T09:30:00Z"
+    },
+    {
+      "source": "BBC World",
+      "titleEn": "Trade negotiations resume between nations",
+      "titleKo": "국가 간 무역 협상 재개",
+      "summary": "• 주요 무역 협상 재개됨\n• 관세 인하 논의 진행\n• 농산물 교역 조건 협의\n• 지식재산권 보호 강화\n• 투자 자유화 방안 검토\n• 분쟁 해결 절차 개선\n• 다자간 협력 강조\n• 디지털 무역 규칙 논의\n• 노동 기준 상향 제안\n• 환경 조항 포함 추진",
+      "link": "https://www.bbc.com/news/world",
+      "pubDate": "2026-02-12T08:45:00Z"
+    },
+    {
+      "source": "BBC World",
+      "titleEn": "New vaccine approved for pandemic prevention",
+      "titleKo": "팬데믹 예방 신규 백신 승인",
+      "summary": "• 신약 개발 성공 발표\n• 임상 시험 완료 단계\n• 규제 기관 승인 획득\n• 대량 생산 계획 수립\n• 전 세계 배포 일정 확정\n• 접종 우선순위 결정\n• 안전성 검증 완료\n• 면역 효율성 입증\n• 부작용 최소화 확인\n• 국제 협력 체계 구축",
+      "link": "https://www.bbc.com/news/world",
+      "pubDate": "2026-02-12T07:15:00Z"
+    },
+    {
+      "source": "BBC World",
+      "titleEn": "Historic summit marks regional cooperation",
+      "titleKo": "역사적 회담으로 지역 협력 강화",
+      "summary": "• 지역 국가 정상 회담 개최\n• 경제 협력 확대 합의\n• 문화 교류 프로그램 시작\n• 인프라 프로젝트 지원\n• 청년 교육 장학금 확대\n• 과학 연구 협력 증진\n• 환경 보호 공동 추진\n• 관광 활성화 계획 수립\n• 기술 이전 협의 진행\n• 미래 회담 일정 예약",
+      "link": "https://www.bbc.com/news/world",
+      "pubDate": "2026-02-12T06:00:00Z"
+    }
+  ],
+  "science": [
+    {
+      "source": "ScienceDaily",
+      "titleEn": "Breakthrough in quantum computing achieved",
+      "titleKo": "양자컴퓨팅 돌파구 달성",
+      "summary": "• 양자 오류 수정 새로운 방식 개발\n• 컴퓨팅 안정성 대폭 향상\n• 다중 큐빗 연동 성공\n• 산업 응용 가능성 증가\n• 암호 해독 속도 100배 향상\n• 신약 개발 시간 단축\n• 재료 과학 활용 확대\n• 기후 모델링 정확도 개선\n• 금융 위험 분석 개선\n• 상용화 시간표 단축",
+      "link": "https://www.sciencedaily.com",
+      "pubDate": "2026-02-12T11:00:00Z"
+    },
+    {
+      "source": "ScienceDaily",
+      "titleEn": "New species discovered in deep ocean",
+      "titleKo": "심해에서 신종 생물 발견",
+      "summary": "• 미지의 생물 종 3종 발견\n• 극단적 환경 적응 능력 파악\n• 유전자 시퀀싱 완료됨\n• 생물 다양성 이해 증진\n• 심해 생태계 연구 확대\n• 의약품 개발 가능성 제시\n• 해양 보호 정책 수립 필요\n• 국제 연구팀 협력 진행\n• 표본 보관 시설 확충\n• 추가 탐사 계획 수립",
+      "link": "https://www.sciencedaily.com",
+      "pubDate": "2026-02-12T10:30:00Z"
+    },
+    {
+      "source": "ScienceDaily",
+      "titleEn": "AI model predicts protein structures accurately",
+      "titleKo": "AI 모델 단백질 구조 정확히 예측",
+      "summary": "• 인공지능 예측 정확도 99%\n• 임상 약물 개발 가속화\n• 질병 메커니즘 이해 심화\n• 신약 후보 물질 선정\n• 개발 비용 절감 예상\n• 임상 시험 기간 단축\n• 희귀질환 치료법 개발\n• 국제 연구 협력 확대\n• 오픈 소스 공개 예정\n• 학계 활용도 극대화",
+      "link": "https://www.sciencedaily.com",
+      "pubDate": "2026-02-12T09:45:00Z"
+    },
+    {
+      "source": "ScienceDaily",
+      "titleEn": "Mars colonization technology reaches new milestone",
+      "titleKo": "화성 식민지화 기술 새 단계 도달",
+      "summary": "• 독립형 생활 시설 시험 완료\n• 물 추출 기술 효율 향상\n• 공기 제조 장치 성능 개선\n• 식량 재배 시스템 구축\n• 에너지 자급 체계 확립\n• 폐기물 처리 기술 개발\n• 우주선 설계 최적화\n• 승무원 훈련 프로그램 진행\n• 국제 협력 약정 체결\n• 2035년 목표 재확인",
+      "link": "https://www.sciencedaily.com",
+      "pubDate": "2026-02-12T08:30:00Z"
+    },
+    {
+      "source": "ScienceDaily",
+      "titleEn": "Climate research shows surprising result",
+      "titleKo": "기후 연구 예상 밖 결과 발표",
+      "summary": "• 해수 온난화 2도 감소 관측\n• 빙하 감소 속도 둔화\n• 극지방 생태계 회복 신호\n• 대기 오염 개선 추세\n• 산림 복구 프로젝트 성공\n• 탄산염 흡수 개선\n• 지구 반사율 변화 관측\n• 그린 에너지 효과 입증\n• 정책 변화 긍정적 평가\n• 2050년 목표 달성 가능성",
+      "link": "https://www.sciencedaily.com",
+      "pubDate": "2026-02-12T07:00:00Z"
+    }
+  ],
+  "economy": [
+    {
+      "source": "Reuters Business",
+      "titleEn": "Stock markets reach new all-time high",
+      "titleKo": "주식시장 사상 최고 신기록 달성",
+      "summary": "• 주요 지수 모두 신고가 경신\n• 기술주 주도 상승장 형성\n• 실업률 저점 도달\n• 소비자 신뢰도 상승\n• 기업 이익 호조\n• 금리 안정 유지\n• 인플레이션 통제 성공\n• 국제 자본 유입 증가\n• 소매 판매 호황\n• 투자 심리 개선",
+      "link": "https://www.reuters.com/business",
+      "pubDate": "2026-02-12T16:00:00Z"
+    },
+    {
+      "source": "Reuters Business",
+      "titleEn": "Major acquisition reshapes tech industry",
+      "titleKo": "대형 인수 기술산업 재편",
+      "summary": "• 대규모 M&A 거래 체결\n• 산업 지형도 변경\n• 기업 가치평가 상승\n• 일자리 창출 예상\n• 신규 서비스 개발 계획\n• 기술 통합 일정 수립\n• 경쟁 환경 변화\n• 소비자 이익 증대\n• 규제 승인 획득\n• 시너지 효과 기대",
+      "link": "https://www.reuters.com/business",
+      "pubDate": "2026-02-12T15:30:00Z"
+    },
+    {
+      "source": "Reuters Business",
+      "titleEn": "Currency markets show volatility amid policy changes",
+      "titleKo": "정책 변화 속 환율 변동성 확대",
+      "summary": "• 중앙은행 금리 인상 결정\n• 환율 급변동 발생\n• 무역 흐름 변화 예상\n• 수출 경쟁력 변화\n• 해외 투자 재검토\n• 환헤지 수요 증가\n• 신흥시장 자본 이동\n• 안전자산 선호 현상\n• 금리 차 거래 기회\n• 장기 추세 변화 예상",
+      "link": "https://www.reuters.com/business",
+      "pubDate": "2026-02-12T14:45:00Z"
+    },
+    {
+      "source": "Reuters Business",
+      "titleEn": "Energy sector sees shift toward renewables",
+      "titleKo": "에너지업 신재생에너지로 전환",
+      "summary": "• 석유 수요 감소 추세\n• 태양력 투자 급증\n• 풍력 발전 확대\n• 배터리 기술 발전\n• 충전소 인프라 구축\n• 자동차 업체 투자 확대\n• 정부 지원 정책 강화\n• 에너지 가격 안정화\n• 일자리 이동 시작\n• 미래 산업 재편성",
+      "link": "https://www.reuters.com/business",
+      "pubDate": "2026-02-12T13:15:00Z"
+    },
+    {
+      "source": "Reuters Business",
+      "titleEn": "Consumer spending surges ahead of forecasts",
+      "titleKo": "소비 지출 예상 크게 초과",
+      "summary": "• 월간 소비 증가율 최고 기록\n• 소매점 매출 호황\n• 온라인 판매 급증\n• 여행 산업 회복\n• 외식업 호조\n• 엔터테인먼트 지출 증가\n• 내구재 판매 증가\n• 신용카드 사용량 증가\n• 저축률 감소\n• 경제 성장 전망 상향",
+      "link": "https://www.reuters.com/business",
+      "pubDate": "2026-02-12T12:00:00Z"
+    }
+  ]
+}

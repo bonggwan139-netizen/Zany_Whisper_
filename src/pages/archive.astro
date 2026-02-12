@@ -17,19 +17,38 @@ const posts = (await getCollection('posts'))
 			</div>
 		</header>
 
-		<!-- Market Cap Link -->
-		<div class="featured-link">
-			<a href={`${import.meta.env.BASE_URL}archive/marketcap`} class="market-cap-card">
+	<!-- Featured Cards Section (Fixed Top) -->
+	<section id="featured-section">
+		<div class="featured-cards-grid">
+			<!-- World News Card -->
+			<a href={`${import.meta.env.BASE_URL}archive/worldnews`} class="featured-card news-card">
+				<span class="card-emoji">🌍</span>
+				<div class="card-content">
+					<h3>World News</h3>
+					<p>매일 최신 뉴스</p>
+				</div>
+				<span class="card-arrow">→</span>
+			</a>
+
+			<!-- Market Cap Card -->
+			<a href={`${import.meta.env.BASE_URL}archive/marketcap`} class="featured-card market-card">
 				<span class="card-emoji">📈</span>
 				<div class="card-content">
-					<h3>Daily Market Cap Top 10</h3>
-					<p>US & Korea Market</p>
+					<h3>Market Cap Top 10</h3>
+					<p>US & Korea</p>
 				</div>
 				<span class="card-arrow">→</span>
 			</a>
 		</div>
+	</section>
 
-		<div id="posts-grid">
+	<!-- Search Section -->
+	<div class="search-row">
+		<input id="search-input" type="search" placeholder="검색 (제목/설명)" />
+	</div>
+
+	<!-- Posts Grid (2 columns) -->
+	<div id="posts-grid">
 			{posts.length === 0 ? (
 				<p class="empty-state">아직 작성된 글이 없습니다.</p>
 			) : (
@@ -79,9 +98,9 @@ const posts = (await getCollection('posts'))
 </Layout>
 
 <style>
-	#archive-container {
+#archive-container {
 		font-family: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
-		max-width: 800px;
+		max-width: 1000px;
 		margin: 0 auto;
 		padding: 60px 16px 80px;
 	}
@@ -101,15 +120,76 @@ const posts = (await getCollection('posts'))
 	#archive-header p {
 		font-size: 16px;
 		color: #6b7280;
-		margin: 0 0 24px;
+		margin: 0;
 		line-height: 1.6;
 	}
 
-	.search-row {
-		display: flex;
-		justify-content: center;
-		margin-bottom: 24px;
+	/* Featured Section (Fixed Top, 2 columns) */
+	#featured-section {
+		margin-bottom: 48px;
 	}
+
+	.featured-cards-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 20px;
+	}
+
+	.featured-card {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 20px;
+		background: linear-gradient(135deg, rgba(109, 179, 232, 0.08) 0%, rgba(64, 176, 219, 0.04) 100%);
+		border: 1.5px solid #6db3e8;
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: all 0.3s ease;
+	}
+
+	.featured-card:hover {
+		background: linear-gradient(135deg, rgba(109, 179, 232, 0.12) 0%, rgba(64, 176, 219, 0.08) 100%);
+		border-color: #40b0db;
+		box-shadow: 0 4px 12px rgba(109, 179, 232, 0.15);
+		transform: translateY(-2px);
+	}
+
+	.card-emoji {
+		font-size: 28px;
+		flex-shrink: 0;
+	}
+
+	.card-content {
+		flex: 1;
+	}
+
+	.card-content h3 {
+		font-size: 16px;
+		font-weight: 600;
+		color: #111827;
+		margin: 0 0 4px;
+	}
+
+	.card-content p {
+		font-size: 14px;
+		color: #6b7280;
+		margin: 0;
+	}
+
+	.card-arrow {
+		font-size: 20px;
+		font-weight: 300;
+		color: #6db3e8;
+		flex-shrink: 0;
+		transition: transform 0.2s;
+	}
+
+	.featured-card:hover .card-arrow {
+		transform: translateX(4px);
+	}
+
+	/* Search Section */
 
 	#search-input {
 		width: 100%;
@@ -141,10 +221,12 @@ const posts = (await getCollection('posts'))
 		background: rgba(255, 255, 255, 1);
 	}
 
+	/* Posts Grid (2 columns on desktop, 1 on mobile) */
 	#posts-grid {
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
 		gap: 24px;
+		margin-top: 32px;
 	}
 
 	.post-card {
@@ -222,6 +304,48 @@ const posts = (await getCollection('posts'))
 		color: #9ca3af;
 		font-size: 14px;
 		padding: 40px 20px;
+		grid-column: 1 / -1;
+	}
+
+	@media screen and (max-width: 768px) {
+		#archive-container {
+			padding: 40px 16px 60px;
+		}
+
+		#archive-header h1 {
+			font-size: 28px;
+		}
+
+		#archive-header {
+			margin-bottom: 32px;
+		}
+
+		#featured-section {
+			margin-bottom: 32px;
+		}
+
+		.featured-cards-grid {
+			grid-template-columns: 1fr;
+			gap: 16px;
+		}
+
+		.search-row {
+			display: flex;
+			justify-content: center;
+			margin-bottom: 24px;
+		}
+
+		#posts-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.post-card {
+			padding: 16px;
+		}
+
+		.post-title {
+			font-size: 18px;
+		}
 	}
 
 	.featured-link {

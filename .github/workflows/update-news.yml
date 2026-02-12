@@ -1,0 +1,48 @@
+name: Update Daily News
+
+on:
+  schedule:
+    # 08:00 KST = 23:00 UTC (previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch daily news
+        run: node scripts/fetch-daily-news.mjs
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Commit and push changes (always)
+        run: |
+          set -e
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add src/data/daily-news.json || true
+          git commit -m "chore: update daily news" || echo "No changes to commit"
+          # Attempt to push to main; log on failure but do not fail the job
+          git push origin HEAD:main || echo "Push failed (exit code $?); check repository permissions and logs"
+
+      - name: Done
+        run: echo "Daily news update workflow finished at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
