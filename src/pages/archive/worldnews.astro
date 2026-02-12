@@ -1,39 +1,35 @@
----
 import Layout from '../../layouts/Layout.astro';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import dailyNews from '../../data/daily-news.json';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../../..');
-const newsDataPath = path.resolve(projectRoot, 'src/data/daily-news.json');
-
-let newsData = {
-  updatedAt: new Date().toISOString().split('T')[0],
-  categories: {
-    world: [],
-    science: [],
-    economy: []
-  },
-  errors: []
-};
-
+// Normalize to lowercase category keys: world, science, economy
+let newsData;
+let loadError = false;
 try {
-  if (fs.existsSync(newsDataPath)) {
-    const rawData = fs.readFileSync(newsDataPath, 'utf-8');
-    newsData = JSON.parse(rawData);
-  }
-} catch (error) {
-  console.warn('Error loading news data:', error.message);
+  const raw = dailyNews || {};
+  const cats = raw.categories || {};
+  const normalized = {
+    world: cats.world || cats.World || [],
+    science: cats.science || cats.Science || [],
+    economy: cats.economy || cats.Economy || []
+  };
+  newsData = {
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+    categories: normalized,
+    errors: raw.errors || []
+  };
+} catch (e) {
+  console.error(e, dailyNews);
+  loadError = true;
+  newsData = { updatedAt: new Date().toISOString(), categories: { world: [], science: [], economy: [] }, errors: [] };
 }
 
 const categoryLabels = {
-  World: '🌍 세계 뉴스',
-  Science: '🔬 과학 뉴스',
-  Economy: '💰 경제 뉴스'
+  world: '🌍 세계 뉴스',
+  science: '🔬 과학 뉴스',
+  economy: '💰 경제 뉴스'
 };
 
-const categoryOrder = ['World', 'Science', 'Economy'];
+const categoryOrder = ['world', 'science', 'economy'];
 ---
 
 <Layout>
@@ -57,41 +53,42 @@ const categoryOrder = ['World', 'Science', 'Economy'];
       <section class="news-category">
         <h2 class="category-title">{categoryLabels[category]}</h2>
         <div class="sources-grid">
-          {newsData.categories && newsData.categories[category] && newsData.categories[category].length > 0 ? (
+          {newsData && newsData.categories && newsData.categories[category] ? (
             newsData.categories[category].map((sourceEntry) => (
-              <div class="source-card" id={sourceEntry.source.replace(/\s+/g, '-')}> 
-                <h3 class="source-name">{sourceEntry.source}</h3>
+              <div class="source-card" id={sourceEntry.source ? sourceEntry.source.replace(/\s+/g, '-') : ''}>
+                <h3 class="source-name">{sourceEntry.source || 'Unknown source'}</h3>
+
                 {(!sourceEntry.items || sourceEntry.items.length === 0) ? (
                   <div style="margin:8px 0; display:flex; gap:8px; align-items:center;">
                     <span class="failed-badge">수집 실패</span>
-                    <span class="failed-reason">{(newsData.errors && newsData.errors.find(e=>e.source===sourceEntry.source && e.category===category) || {}).reason || sourceEntry.error || '데이터 없음'}</span>
+                    <span class="failed-reason">{(newsData.errors && newsData.errors.find(e => e.source === sourceEntry.source && e.category === category) || {}).reason || sourceEntry.error || '데이터 없음'}</span>
                   </div>
                 ) : null}
 
-                <ul class="article-list">
+                <div class="article-list">
                   {sourceEntry.items && sourceEntry.items.length > 0 ? (
                     sourceEntry.items.map((article) => (
-                      <li class="article-item">
+                      <article class="article-item">
                         <div class="article-header">
-                          <a href={article.link} target="_blank" rel="noopener noreferrer" class="article-title-ko">
-                            {article.titleKo}
+                          <a href={article.url} target="_blank" rel="noopener noreferrer" class="article-title-ko">
+                            {article.translatedTitle || article.title}
                           </a>
                         </div>
-                        <div class="article-original-title">{article.titleEn}</div>
-                        <div class="article-summary">{article.summary}</div>
+                        <div class="article-original-title">{article.title}</div>
+                        <p class="article-summary">{article.summary}</p>
                         <div class="article-meta">
-                          <a href={article.link} target="_blank" rel="noopener noreferrer" class="source-link">원문 보기 →</a>
+                          <a href={article.url} target="_blank" rel="noopener noreferrer" class="source-link">원문 보기 →</a>
                         </div>
-                      </li>
+                      </article>
                     ))
                   ) : (
-                    <li class="article-item no-data">수집된 기사가 없습니다.</li>
+                    <div class="article-item no-data">수집된 기사가 없습니다.</div>
                   )}
-                </ul>
+                </div>
               </div>
             ))
           ) : (
-            <p class="no-data">뉴스 데이터를 불러올 수 없습니다.</p>
+            <p class="no-data">데이터 로드 오류(콘솔 확인)</p>
           )}
         </div>
       </section>
