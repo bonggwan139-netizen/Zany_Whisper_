@@ -10,9 +10,12 @@ const newsDataPath = path.resolve(projectRoot, 'src/data/daily-news.json');
 
 let newsData = {
   updatedAt: new Date().toISOString().split('T')[0],
-  world: [],
-  science: [],
-  economy: []
+  categories: {
+    world: [],
+    science: [],
+    economy: []
+  },
+  errors: []
 };
 
 try {
@@ -54,20 +57,20 @@ const categoryOrder = ['world', 'science', 'economy'];
       <section class="news-category">
         <h2 class="category-title">{categoryLabels[category]}</h2>
         <div class="sources-grid">
-          {newsData[category] && newsData[category].length > 0 ? (
-            newsData[category].map((sourceEntry) => (
-              <div class="source-card">
+          {newsData.categories && newsData.categories[category] && newsData.categories[category].length > 0 ? (
+            newsData.categories[category].map((sourceEntry) => (
+              <div class="source-card" id={sourceEntry.source.replace(/\s+/g, '-')}> 
                 <h3 class="source-name">{sourceEntry.source}</h3>
-                {sourceEntry.articleCount === 0 ? (
+                {(!sourceEntry.items || sourceEntry.items.length === 0) ? (
                   <div style="margin:8px 0; display:flex; gap:8px; align-items:center;">
                     <span class="failed-badge">수집 실패</span>
-                    <span class="failed-reason">{sourceEntry.error || '데이터 없음'}</span>
+                    <span class="failed-reason">{(newsData.errors && newsData.errors.find(e=>e.source===sourceEntry.source && e.category===category) || {}).reason || sourceEntry.error || '데이터 없음'}</span>
                   </div>
                 ) : null}
 
                 <ul class="article-list">
-                  {sourceEntry.articles && sourceEntry.articles.length > 0 ? (
-                    sourceEntry.articles.map((article) => (
+                  {sourceEntry.items && sourceEntry.items.length > 0 ? (
+                    sourceEntry.items.map((article) => (
                       <li class="article-item">
                         <div class="article-header">
                           <a href={article.link} target="_blank" rel="noopener noreferrer" class="article-title-ko">

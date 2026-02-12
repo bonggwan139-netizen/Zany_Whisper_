@@ -20,78 +20,116 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || ''
 });
 
-// RSS 출처 설정 (안정적인 사이트 기준)
-// 각 분야별 3개씩 총 9개 RSS 피드
+// RSS 출처 설정 (각 카테고리별 정확히 3개, 동작 확인 후 대체 소스 사용)
 const NEWS_SOURCES = {
   world: [
-    { name: 'BBC World', url: 'http://feeds.bbc.co.uk/news/world/rss.xml' },
+    { name: 'BBC World', url: 'http://feeds.bbci.co.uk/news/world/rss.xml' },
     { name: 'The Guardian World', url: 'https://www.theguardian.com/world/rss' },
     { name: 'Al Jazeera English', url: 'https://www.aljazeera.com/xml/rss/all.xml' }
   ],
   science: [
+    { name: 'NASA Breaking News', url: 'https://www.nasa.gov/rss/dyn/breaking_news.rss' },
     { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml' },
-    { name: 'Nature News', url: 'https://www.nature.com/nature/current_issue/rss/' },
     { name: 'Phys.org', url: 'https://phys.org/rss-feed/' }
   ],
   economy: [
+    { name: 'CNBC Top News', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
+    { name: 'MarketWatch Top Stories', url: 'https://feeds.marketwatch.com/marketwatch/topstories/' },
+    { name: 'Investing News', url: 'https://www.investing.com/rss/news.rss' }
+  ]
+};
+
+// 대체 후보 목록 (fetch 시 items가 0이면 이 중에서 대체)
+const FALLBACK_CANDIDATES = {
+  world: [
+    { name: 'NYTimes World', url: 'https://rss.nytimes.com/services/xml/rss/nyt/World.xml' }
+  ],
+  science: [
+    { name: 'Nature News', url: 'https://www.nature.com/nature/current_issue/rss/' }
+  ],
+  economy: [
     { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
-    { name: 'Financial Times', url: 'https://feeds.ft.com/home/rss' },
-    { name: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/' }
+    { name: 'Financial Times', url: 'https://www.ft.com/?format=rss' }
   ]
 };
 
 const ARTICLES_PER_SOURCE = 5;
+const USER_AGENT = 'Mozilla/5.0 (compatible; ZanyWhisperBot/1.0; +https://bonggwan139-netizen.github.io/Zany_Whisper_/)';
+const FETCH_TIMEOUT = 12000; // ms
+const FETCH_RETRIES = 2;
 
 /**
  * RSS 피드에서 기사 수집
  */
 async function fetchArticlesFromRSS(source) {
   // Returns { articles: [], error: null|string, status: number|null }
-  try {
-    console.log(`  -> Source: ${source.name}`);
-    console.log(`     URL: ${source.url}`);
+  let attempt = 0;
+  let lastErr = null;
 
-    // Fetch first to get status code and raw XML
-    const res = await fetch(source.url, { redirect: 'follow' });
-    const status = res.status || null;
-    console.log(`     Fetch status: ${status}`);
+  console.log(`  -> Source: ${source.name} (${source.url})`);
 
-    if (!res.ok) {
-      const reason = `Fetch failed with status ${status}`;
-      console.warn(`     ❌ ${source.name}: ${reason}`);
-      return { articles: [], error: reason, status };
-    }
+  while (attempt <= FETCH_RETRIES) {
+    attempt += 1;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
-    const xml = await res.text();
-    let feed;
     try {
-      feed = await parser.parseString(xml);
-    } catch (perr) {
-      const reason = `Parse failed: ${perr.message}`;
-      console.warn(`     ❌ ${source.name}: ${reason}`);
-      return { articles: [], error: reason, status };
+      const res = await fetch(source.url, {
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+        }
+      });
+
+      clearTimeout(timeout);
+      const status = res.status || null;
+      console.log(`     Attempt ${attempt} - Fetch status: ${status}`);
+
+      if (!res.ok) {
+        lastErr = `Fetch failed with status ${status}`;
+        console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
+        if (attempt <= FETCH_RETRIES) continue;
+        return { articles: [], error: lastErr, status };
+      }
+
+      const xml = await res.text();
+      let feed;
+      try {
+        feed = await parser.parseString(xml);
+      } catch (perr) {
+        lastErr = `Parse failed: ${perr.message}`;
+        console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
+        if (attempt <= FETCH_RETRIES) continue;
+        return { articles: [], error: lastErr, status };
+      }
+
+      const rawItems = Array.isArray(feed.items) ? feed.items.slice(0, ARTICLES_PER_SOURCE) : [];
+
+      const articles = rawItems.map((item, idx) => ({
+        id: `${Date.now()}-${idx}`,
+        title: item.title || 'No title',
+        description: item.description || item.summary || '',
+        content: item.content || '', // mapped from content:encoded by parser config
+        contentSnippet: item.contentSnippet || '',
+        link: item.link || '',
+        pubDate: item.pubDate || new Date().toISOString()
+      }));
+
+      console.log(`     Parse success: ${rawItems.length > 0 ? 'yes' : 'no'}`);
+      console.log(`     Final items: ${articles.length}`);
+
+      return { articles, error: null, status };
+    } catch (err) {
+      clearTimeout(timeout);
+      lastErr = err && err.name === 'AbortError' ? 'timeout' : (err && err.message ? err.message : String(err));
+      console.warn(`     Attempt ${attempt} - ❌ ${source.name}: ${lastErr}`);
+      if (attempt > FETCH_RETRIES) {
+        return { articles: [], error: lastErr, status: null };
+      }
+      // else retry
     }
-
-    const rawItems = Array.isArray(feed.items) ? feed.items.slice(0, ARTICLES_PER_SOURCE) : [];
-
-    const articles = rawItems.map((item, idx) => ({
-      id: `${Date.now()}-${idx}`,
-      title: item.title || 'No title',
-      description: item.description || item.summary || '',
-      content: item.content || '', // mapped from content:encoded by parser config
-      contentSnippet: item.contentSnippet || '',
-      link: item.link || '',
-      pubDate: item.pubDate || new Date().toISOString()
-    }));
-
-    console.log(`     Parse success: ${rawItems.length > 0 ? 'yes' : 'no'}`);
-    console.log(`     Final items: ${articles.length}`);
-
-    return { articles, error: null, status };
-  } catch (err) {
-    const reason = err && err.message ? err.message : String(err);
-    console.error(`     ❌ ${source.name}: Fetch/Parse error - ${reason}`);
-    return { articles: [], error: reason, status: null };
   }
 }
 
@@ -284,9 +322,11 @@ function generateFallbackSummary(text) {
 async function fetchAllNews() {
   const result = {
     updatedAt: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-    world: [],
-    science: [],
-    economy: [],
+    categories: {
+      world: [],
+      science: [],
+      economy: []
+    },
     errors: []
   };
 
@@ -298,31 +338,51 @@ async function fetchAllNews() {
     stats[category] = {};
 
     for (const source of sources) {
-      // fetchArticlesFromRSS returns { articles, error, status }
-      const res = await fetchArticlesFromRSS(source);
-      const articles = Array.isArray(res.articles) ? res.articles : [];
-      const error = res.error || null;
+      // Try primary source first
+      let res = await fetchArticlesFromRSS(source);
+      let articles = Array.isArray(res.articles) ? res.articles : [];
+      let error = res.error || null;
       stats[category][source.name] = articles.length;
 
-      // Prepare source entry so frontend can always show 3 cards per category
+      // If no items, try fallback candidates for this category
+      if ((!articles || articles.length === 0) && Array.isArray(FALLBACK_CANDIDATES[category])) {
+        console.log(`     No items from ${source.name}, trying fallback candidates...`);
+        for (const alt of FALLBACK_CANDIDATES[category]) {
+          console.log(`     Trying fallback ${alt.name} -> ${alt.url}`);
+          const altRes = await fetchArticlesFromRSS(alt);
+          const altArticles = Array.isArray(altRes.articles) ? altRes.articles : [];
+          if (altArticles && altArticles.length > 0) {
+            articles = altArticles;
+            error = null;
+            // replace source info to indicate replacement
+            source.name = `${source.name} (fallback: ${alt.name})`;
+            source.url = alt.url;
+            stats[category][source.name] = articles.length;
+            console.log(`     Fallback succeeded: ${alt.name} -> ${articles.length} items`);
+            break;
+          } else {
+            console.log(`     Fallback ${alt.name} returned ${altArticles.length} items`);
+          }
+        }
+      }
+
+      // Prepare source entry
       const sourceEntry = {
         source: source.name,
         url: source.url,
-        articles: [],
-        articleCount: articles.length,
+        items: [],
+        itemCount: articles.length,
         error: error
       };
 
       if (error) {
-        // record error for debugging
         result.errors.push({ category, source: source.name, url: source.url, reason: error });
         console.warn(`  [ERROR] ${category} - ${source.name}: ${error}`);
       }
 
-      // Process articles (may be empty)
       for (const article of articles) {
         const { titleKo, summary } = await translateAndSummarize(article);
-        sourceEntry.articles.push({
+        sourceEntry.items.push({
           id: article.id,
           titleEn: article.title,
           titleKo,
@@ -332,7 +392,7 @@ async function fetchAllNews() {
         });
       }
 
-      result[category].push(sourceEntry);
+      result.categories[category].push(sourceEntry);
 
       // API 호출 제한 방지
       await new Promise(resolve => setTimeout(resolve, 1000));
