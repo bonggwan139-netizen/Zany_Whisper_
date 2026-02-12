@@ -66,13 +66,12 @@ async function fetchArticlesFromRSS(source) {
 
 /**
  * OpenAI를 사용한 번역 및 요약 생성
- * fallback: 번역=원문 제목, 요약=description을 10줄로 정리
+ * 에세이 형식: 8-12줄 단일 문단, 자연스러운 한국어
  */
 async function translateAndSummarize(article) {
   const hasApiKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0;
 
   if (!hasApiKey) {
-    console.warn(`⚠️  OPENAI_API_KEY not set. Using fallback for: "${article.title}"`);
     return {
       titleKo: article.title,
       summary: generateFallbackSummary(article.description)
@@ -91,19 +90,47 @@ Content (if available): ${article.content.substring(0, 500)}
       messages: [
         {
           role: 'system',
-          content: 'You are a professional translator and summarizer. Translate titles to Korean and create concise, structured summaries in Korean. For summaries, format as exactly 10 bullet points. Be accurate and preserve meaning.'
+          content: `You are an expert Korean journalist specializing in news summarization. Your task is to:
+
+1. Translate the article title accurately to natural, idiomatic Korean
+2. Write a concise essay-style summary in Korean (8-12 lines)
+3. Structure the summary: key context → background → main content → implication/significance
+4. Format: Single paragraph only (no bullet points, no line breaks within the summary text)
+5. Language guidelines:
+   - Write naturally like a professional journalist, not a machine
+   - Keep sentences short and direct for clarity
+   - Avoid unnecessary repetition
+   - Do not use overly formal or stiff language
+   - Never start with meta-expressions like "이 기사는...", "해당 뉴스에 따르면...", "보도에 의하면..."
+   - Use active voice when possible
+   - Connect ideas smoothly for good flow
+6. Content guidelines:
+   - Include the key facts and main points
+   - Explain briefly why this matters (implication/significance)
+   - Maintain strict objectivity - no personal opinions, judgments, or excessive evaluation
+   - Avoid promotional or sensationalist language
+   - Never add subjective phrases like "흥미롭게도", "놀랍게도" at the end
+
+The summary should read as if written by a professional news editor - natural, coherent, and informative.`
         },
         {
           role: 'user',
-          content: `Translate the title to Korean and create a summary of exactly 10 bullet points in Korean:
+          content: `Please translate the title to Korean and write an essay-style summary in Korean based on the following article information:
 
 ${textToProcess}
 
-Format your response as JSON: { "titleKo": "...", "summary": "point1\\npoint2\\n..." }`
+Requirements:
+- Summary must be 8-12 lines in one continuous paragraph
+- Natural journalist writing style
+- No bullet points or special formatting
+- Objective and factual tone
+- Include the key context, background, main content, and significance
+
+Format your response as JSON: { "titleKo": "translated title in Korean", "summary": "complete summary paragraph here" }`
         }
       ],
       temperature: 0.3,
-      max_tokens: 500
+      max_tokens: 600
     });
 
     const content = response.choices[0].message.content;
@@ -111,7 +138,7 @@ Format your response as JSON: { "titleKo": "...", "summary": "point1\\npoint2\\n
 
     return {
       titleKo: parsed.titleKo || article.title,
-      summary: parsed.summary || generateFallbackSummary(article.description)
+      summary: (parsed.summary || generateFallbackSummary(article.description)).trim()
     };
   } catch (err) {
     console.warn(`⚠️  OpenAI API error:`, err.message);
@@ -123,20 +150,47 @@ Format your response as JSON: { "titleKo": "...", "summary": "point1\\npoint2\\n
 }
 
 /**
- * Fallback 요약: description을 10줄로 줄바꿈 정리
+ * Fallback 요약: Description을 자연스러운 문단형으로 정렬 (8-12줄)
+ * 기자처럼 작성된 흐름으로 연결
  */
 function generateFallbackSummary(description) {
   // HTML 태그 제거
   let text = description.replace(/<[^>]*>/g, '').trim();
-  // 첫 500자만 사용
-  text = text.substring(0, 500);
-  // 문장 단위로 분할하고 10개 항목으로 정렬
-  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).slice(0, 10);
-  // 부족하면 더미 항목으로 채움
-  while (sentences.length < 10) {
-    sentences.push('[정보 제한]');
+  
+  // 첫 800자 사용 (더 긴 요약을 위해)
+  text = text.substring(0, 800);
+  
+  // 문장 분할 (마침표, 물음표, 느낌표 기준)
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .slice(0, 12); // 최대 12문장
+  
+  // 부족하면 빈 문장 제거 (더미 추가하지 않음)
+  if (sentences.length === 0) {
+    return '기사 요약정보가 제한적입니다.';
   }
-  return sentences.map(s => s.trim()).join('\n');
+  
+  // 자연스러운 문단으로 연결
+  // 첫 3-4 문장은 그대로, 나머지는 약간 간결하게
+  let summary = sentences.slice(0, 4).join(' ');
+  
+  if (sentences.length > 4) {
+    const restSentences = sentences
+      .slice(4)
+      .map(s => s.length > 50 ? s.substring(0, 50) + '...' : s)
+      .join(' ');
+    summary += ' ' + restSentences;
+  }
+  
+  // 마침표로 끝나도록 정리
+  summary = summary.trim();
+  if (!summary.endsWith('.')) {
+    summary += '.';
+  }
+  
+  return summary;
 }
 
 /**
