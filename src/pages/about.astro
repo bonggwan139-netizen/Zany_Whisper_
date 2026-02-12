@@ -5,7 +5,7 @@ import Layout from '../layouts/Layout.astro';
 <Layout>
 	<div id="about-container">
 		<header id="about-header">
-			<a href="/" class="back-link">← 돌아가기</a>
+			<a href={`${import.meta.env.BASE_URL}`} class="back-link">← 돌아가기</a>
 		</header>
 
 		<article id="about-content">

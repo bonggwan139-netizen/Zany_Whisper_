@@ -19,7 +19,7 @@ const posts = (await getCollection('posts'))
 
 		<!-- Market Cap Link -->
 		<div class="featured-link">
-			<a href="/archive/marketcap" class="market-cap-card">
+			<a href={`${import.meta.env.BASE_URL}archive/marketcap`} class="market-cap-card">
 				<span class="card-emoji">📈</span>
 				<div class="card-content">
 					<h3>Daily Market Cap Top 10</h3>
@@ -35,7 +35,7 @@ const posts = (await getCollection('posts'))
 			) : (
 				posts.map(post => (
 						<article class="post-card" data-title={post.data.title.toLowerCase()} data-description={post.data.description.toLowerCase()}>
-						<a href={`/posts/${post.slug}`} class="post-link">
+						<a href={`${import.meta.env.BASE_URL}posts/${post.slug}`} class="post-link">
 							<h2 class="post-title">{post.data.title}</h2>
 						</a>
 						<p class="post-description">{post.data.description}</p>

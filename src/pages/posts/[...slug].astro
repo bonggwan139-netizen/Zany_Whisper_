@@ -46,7 +46,7 @@ const { Content } = await entry.render();
 		</div>
 
 		<footer id="post-footer">
-			<a href="/archive" class="back-link">← 목록으로 돌아가기</a>
+			<a href={`${import.meta.env.BASE_URL}archive`} class="back-link">← 목록으로 돌아가기</a>
 		</footer>
 	</article>
 </Layout>
