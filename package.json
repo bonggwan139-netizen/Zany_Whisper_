@@ -7,14 +7,11 @@
     "build": "astro build",
     "preview": "astro preview --port 4321",
     "astro": "astro",
-    "update:marketcap": "node scripts/fetch-marketcap-top10.mjs",
-    "update:news": "node scripts/fetch-daily-news.mjs"
+    "update:marketcap": "node scripts/fetch-marketcap-top10.mjs"
   },
   "dependencies": {
     "astro": "^5.17.1",
     "axios": "^1.13.5",
-    "cheerio": "^1.2.0",
-    "rss-parser": "^3.13.0",
-    "openai": "^4.56.0"
+    "cheerio": "^1.2.0"
   }
 }
