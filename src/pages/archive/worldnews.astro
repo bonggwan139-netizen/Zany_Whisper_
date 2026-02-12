@@ -55,21 +55,19 @@ const categoryOrder = ['world', 'science', 'economy'];
         <h2 class="category-title">{categoryLabels[category]}</h2>
         <div class="sources-grid">
           {newsData[category] && newsData[category].length > 0 ? (
-            // 출처별로 그룹화
-            (() => {
-              const groupedBySources = {};
-              newsData[category].forEach((article, idx) => {
-                if (!groupedBySources[article.source]) {
-                  groupedBySources[article.source] = [];
-                }
-                groupedBySources[article.source].push(article);
-              });
+            newsData[category].map((sourceEntry) => (
+              <div class="source-card">
+                <h3 class="source-name">{sourceEntry.source}</h3>
+                {sourceEntry.articleCount === 0 ? (
+                  <div style="margin:8px 0; display:flex; gap:8px; align-items:center;">
+                    <span class="failed-badge">수집 실패</span>
+                    <span class="failed-reason">{sourceEntry.error || '데이터 없음'}</span>
+                  </div>
+                ) : null}
 
-              return Object.entries(groupedBySources).map(([source, articles]) => (
-                <div class="source-card">
-                  <h3 class="source-name">{source}</h3>
-                  <ul class="article-list">
-                    {articles.map((article, idx) => (
+                <ul class="article-list">
+                  {sourceEntry.articles && sourceEntry.articles.length > 0 ? (
+                    sourceEntry.articles.map((article) => (
                       <li class="article-item">
                         <div class="article-header">
                           <a href={article.link} target="_blank" rel="noopener noreferrer" class="article-title-ko">
@@ -77,20 +75,18 @@ const categoryOrder = ['world', 'science', 'economy'];
                           </a>
                         </div>
                         <div class="article-original-title">{article.titleEn}</div>
-                        <div class="article-summary">
-                          {article.summary}
-                        </div>
+                        <div class="article-summary">{article.summary}</div>
                         <div class="article-meta">
-                          <a href={article.link} target="_blank" rel="noopener noreferrer" class="source-link">
-                            원문 보기 →
-                          </a>
+                          <a href={article.link} target="_blank" rel="noopener noreferrer" class="source-link">원문 보기 →</a>
                         </div>
                       </li>
-                    ))}
-                  </ul>
-                </div>
-              ));
-            })()
+                    ))
+                  ) : (
+                    <li class="article-item no-data">수집된 기사가 없습니다.</li>
+                  )}
+                </ul>
+              </div>
+            ))
           ) : (
             <p class="no-data">뉴스 데이터를 불러올 수 없습니다.</p>
           )}
@@ -251,6 +247,21 @@ const categoryOrder = ['world', 'science', 'economy'];
     white-space: pre-line;
   }
 
+  .failed-badge {
+    display: inline-block;
+    background: #fee2e2;
+    color: #b91c1c;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .failed-reason {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
   .summary-line {
     margin-bottom: 4px;
   }
@@ -282,6 +293,14 @@ const categoryOrder = ['world', 'science', 'economy'];
     color: #9ca3af;
     padding: 40px 20px;
     font-size: 14px;
+  }
+
+  .article-list .no-data {
+    padding: 20px;
+    text-align: center;
+    color: #9ca3af;
+    background: #fff5f5;
+    border-radius: 6px;
   }
 
   .news-footer {
