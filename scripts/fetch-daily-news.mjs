@@ -21,6 +21,7 @@ const openai = new OpenAI({
 });
 
 // RSS 출처 설정 (안정적인 사이트 기준)
+// 각 분야별 3개씩 총 9개 RSS 피드
 const NEWS_SOURCES = {
   world: [
     { name: 'BBC World', url: 'http://feeds.bbc.co.uk/news/world/rss.xml' },
@@ -65,24 +66,79 @@ async function fetchArticlesFromRSS(source) {
 }
 
 /**
+ * Title만 기반으로 5~8문장 한국어 요약 생성 (입력 텍스트 부족 시)
+ */
+async function generateTitleBasedSummary(title) {
+  const hasApiKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0;
+  
+  if (!hasApiKey) {
+    // Fallback: OpenAI 없을 때
+    return `${title} 관련 소식입니다.`;
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert Korean journalist. Based on an article title, write a brief 5-8 sentence Korean summary that explains what this news might be about. Write naturally as if you are a news editor summarizing the news story. Use a single paragraph format. Do not use meta-expressions like "이 기사는" or "해당 뉴스에서". Keep it objective and factual.`
+        },
+        {
+          role: 'user',
+          content: `Please write a 5-8 sentence Korean summary based on this article title:
+
+Title: ${title}
+
+Format your response as JSON: { "summary": "summary text here" }`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 300
+    });
+
+    const content = response.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    return (parsed.summary || `${title} 관련 뉴스입니다.`).trim();
+  } catch (err) {
+    return `${title} 관련 소식입니다.`;
+  }
+}
+
+/**
  * OpenAI를 사용한 번역 및 요약 생성
  * 에세이 형식: 8-12줄 단일 문단, 자연스러운 한국어
  */
 async function translateAndSummarize(article) {
   const hasApiKey = process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0;
 
+  // 입력 텍스트 우선순위: content > description > title
+  let inputText = (article.content || article.description || '').trim();
+  
+  // 입력 텍스트가 너무 짧으면 (100자 미만) title 기반 요약 사용
+  if (!inputText || inputText.length < 100) {
+    const summary = await generateTitleBasedSummary(article.title);
+    return {
+      titleKo: article.title, // fallback: 원문 제목
+      summary
+    };
+  }
+
   if (!hasApiKey) {
+    // OpenAI 없을 때 fallback 요약
     return {
       titleKo: article.title,
-      summary: generateFallbackSummary(article.description)
+      summary: generateFallbackSummary(inputText)
     };
   }
 
   try {
+    // HTML 태그 제거
+    inputText = inputText.replace(/<[^>]*>/g, '').trim();
+
     const textToProcess = `
 Title: ${article.title}
-Description: ${article.description}
-Content (if available): ${article.content.substring(0, 500)}
+Content: ${inputText.substring(0, 1000)}
     `.trim();
 
     const response = await openai.chat.completions.create({
@@ -95,7 +151,7 @@ Content (if available): ${article.content.substring(0, 500)}
 1. Translate the article title accurately to natural, idiomatic Korean
 2. Write a concise essay-style summary in Korean (8-12 lines)
 3. Structure the summary: key context → background → main content → implication/significance
-4. Format: Single paragraph only (no bullet points, no line breaks within the summary text)
+4. Format: Single paragraph only (ONE continuous text, no bullets, no line breaks, no array)
 5. Language guidelines:
    - Write naturally like a professional journalist, not a machine
    - Keep sentences short and direct for clarity
@@ -111,22 +167,21 @@ Content (if available): ${article.content.substring(0, 500)}
    - Avoid promotional or sensationalist language
    - Never add subjective phrases like "흥미롭게도", "놀랍게도" at the end
 
-The summary should read as if written by a professional news editor - natural, coherent, and informative.`
+The summary must be returned as a SINGLE CONTINUOUS PARAGRAPH with NO line breaks within the text.`
         },
         {
           role: 'user',
-          content: `Please translate the title to Korean and write an essay-style summary in Korean based on the following article information:
+          content: `Please translate the title to Korean and write an essay-style summary in Korean based on the following article:
 
 ${textToProcess}
 
 Requirements:
-- Summary must be 8-12 lines in one continuous paragraph
+- Summary must be 8-12 lines in ONE continuous paragraph
 - Natural journalist writing style
-- No bullet points or special formatting
+- SINGLE PARAGRAPH ONLY - do not include line breaks, bullets, or arrays
 - Objective and factual tone
-- Include the key context, background, main content, and significance
 
-Format your response as JSON: { "titleKo": "translated title in Korean", "summary": "complete summary paragraph here" }`
+Format your response as JSON: { "titleKo": "translated title in Korean", "summary": "complete summary paragraph here with no line breaks" }`
         }
       ],
       temperature: 0.3,
@@ -136,53 +191,49 @@ Format your response as JSON: { "titleKo": "translated title in Korean", "summar
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content);
 
+    // 혹시 summary에 줄바꿈이 포함되어 있으면 공백으로 통일
+    const cleanSummary = (parsed.summary || generateFallbackSummary(inputText))
+      .trim()
+      .replace(/\n\n+/g, ' ')
+      .replace(/\n/g, ' ');
+
     return {
       titleKo: parsed.titleKo || article.title,
-      summary: (parsed.summary || generateFallbackSummary(article.description)).trim()
+      summary: cleanSummary
     };
   } catch (err) {
     console.warn(`⚠️  OpenAI API error:`, err.message);
     return {
       titleKo: article.title,
-      summary: generateFallbackSummary(article.description)
+      summary: generateFallbackSummary(inputText)
     };
   }
 }
 
 /**
- * Fallback 요약: Description을 자연스러운 문단형으로 정렬 (8-12줄)
- * 기자처럼 작성된 흐름으로 연결
+ * Fallback 요약: 텍스트를 자연스러운 문단으로 정렬 (5~8문장)
+ * 절대 placeholder나 "[정보 제한]" 같은 마크를 포함하지 않음
  */
-function generateFallbackSummary(description) {
+function generateFallbackSummary(text) {
   // HTML 태그 제거
-  let text = description.replace(/<[^>]*>/g, '').trim();
+  let cleanText = text.replace(/<[^>]*>/g, '').trim();
   
-  // 첫 800자 사용 (더 긴 요약을 위해)
-  text = text.substring(0, 800);
+  // 첫 800자 사용
+  cleanText = cleanText.substring(0, 800);
   
-  // 문장 분할 (마침표, 물음표, 느낌표 기준)
-  const sentences = text
+  // 문장 분할
+  const sentences = cleanText
     .split(/[.!?]+/)
     .map(s => s.trim())
     .filter(s => s.length > 0)
-    .slice(0, 12); // 최대 12문장
+    .slice(0, 8); // 최대 8문장
   
-  // 부족하면 빈 문장 제거 (더미 추가하지 않음)
   if (sentences.length === 0) {
-    return '기사 요약정보가 제한적입니다.';
+    return '뉴스 내용을 확인해주세요.';
   }
   
-  // 자연스러운 문단으로 연결
-  // 첫 3-4 문장은 그대로, 나머지는 약간 간결하게
-  let summary = sentences.slice(0, 4).join(' ');
-  
-  if (sentences.length > 4) {
-    const restSentences = sentences
-      .slice(4)
-      .map(s => s.length > 50 ? s.substring(0, 50) + '...' : s)
-      .join(' ');
-    summary += ' ' + restSentences;
-  }
+  // 자연스러운 문단으로 연결 (절대 placeholder 추가 금지)
+  let summary = sentences.join(' ');
   
   // 마침표로 끝나도록 정리
   summary = summary.trim();
@@ -204,7 +255,7 @@ async function fetchAllNews() {
     economy: []
   };
 
-  // 통계용 객체
+  // Source별 통계
   const stats = {};
 
   for (const [category, sources] of Object.entries(NEWS_SOURCES)) {
@@ -247,7 +298,7 @@ async function main() {
     // 파일 저장 (덮어쓰기)
     fs.writeFileSync(dataPath, JSON.stringify(newsData, null, 2), 'utf-8');
     
-    // 상세한 통계 출력
+    // 통계 출력
     console.log('\n' + '='.repeat(60));
     console.log('📊 NEWS COLLECTION SUMMARY');
     console.log('='.repeat(60));

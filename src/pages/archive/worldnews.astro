@@ -78,9 +78,7 @@ const categoryOrder = ['world', 'science', 'economy'];
                         </div>
                         <div class="article-original-title">{article.titleEn}</div>
                         <div class="article-summary">
-                          {article.summary.split('\n').map((line, i) => (
-                            <div key={i} class="summary-line">• {line}</div>
-                          ))}
+                          {article.summary}
                         </div>
                         <div class="article-meta">
                           <a href={article.link} target="_blank" rel="noopener noreferrer" class="source-link">
@@ -250,6 +248,7 @@ const categoryOrder = ['world', 'science', 'economy'];
     background: white;
     padding: 12px;
     border-radius: 4px;
+    white-space: pre-line;
   }
 
   .summary-line {
